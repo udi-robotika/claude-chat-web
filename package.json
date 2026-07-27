@@ -1,0 +1,9 @@
+{
+  "name": "claude-chat-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "עמוד צ'אט פשוט המדבר עם Claude API דרך Vercel Serverless Function",
+  "scripts": {
+    "dev": "vercel dev"
+  }
+}
