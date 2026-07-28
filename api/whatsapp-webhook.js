@@ -141,7 +141,7 @@ export default async function handler(req, res) {
       (claudeData.content || []).map((c) => c.text || '').join('') ||
       'מצטערים, לא הצלחנו לענות כרגע. אפשר לפנות אלינו בטלפון 054-5639120.';
 
-    await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+    await fetch(`https://graph.facebook.com/v21.0/$${phoneNumberId}/messages`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
