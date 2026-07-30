@@ -107,6 +107,9 @@ export default async function handler(req, res) {
 
   try {
     const body = req.body || {};
+
+    console.log("WHATSAPP DEBUG:", JSON.stringify(body));
+    
     const value = body?.entry?.[0]?.changes?.[0]?.value;
     const message = value?.messages?.[0];
 
