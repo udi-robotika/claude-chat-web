@@ -29,7 +29,7 @@
   <div id="panel" hidden>
     <div id="toolbar">
       <button id="refresh" type="button">רענון</button>
-      <span>מוצגות עד 50 השיחות האחרונות</span>
+      <span>מוצגות עד 100 השיחות האחרונות</span>
     </div>
     <div id="conversations"></div>
   </div>
@@ -72,7 +72,10 @@
 
         const meta = document.createElement('div');
         meta.className = 'meta';
-        const time = new Date(item.time).toLocaleString('he-IL');
+        const parsedTime = new Date(item.time);
+        const time = Number.isNaN(parsedTime.getTime())
+          ? (item.time || '—')
+          : parsedTime.toLocaleString('he-IL');
         const customer = item.name ? item.name + ' · ' + item.phone : item.phone;
         meta.textContent = customer + ' · ' + time;
         card.appendChild(meta);
