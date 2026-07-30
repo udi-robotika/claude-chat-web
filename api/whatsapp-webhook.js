@@ -144,7 +144,7 @@ export default async function handler(req, res) {
       (claudeData.content || []).map((c) => c.text || '').join('') ||
       'מצטערים, לא הצלחנו לענות כרגע. אפשר לפנות אלינו בטלפון 054-5639120.';
 
-await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
+const metaRes = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
   method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -157,6 +157,9 @@ await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
         text: { body: replyText },
       }),
     });
+
+    const metaResponseText = await metaRes.text();
+    console.log("META RESPONSE:", metaRes.status, metaResponseText);
 
     return res.status(200).json({ ok: true });
   } catch (err) {
