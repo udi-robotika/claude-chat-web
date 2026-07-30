@@ -1,7 +1,70 @@
 // Vercel Serverless Function - WhatsApp Cloud API webhook
 // מקבל הודעות נכנסות מ-WhatsApp, שולח ל-Claude, ומחזיר תשובה ללקוח דרך WhatsApp Cloud API.
 
+const SHEETS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyeCAcrIHAjlTA1OWscBFT7rTXxbxQz7xanJl4hjXA2WceNfAzw5OA_Gch4wvfvyqU/exec';
 const recentConversations = [];
+
+async function saveConversationToSheets(conversation) {
+  const secret = process.env.GOOGLE_SHEETS_SECRET;
+  if (!secret) {
+    throw new Error('GOOGLE_SHEETS_SECRET is not configured');
+  }
+
+  const response = await fetch(SHEETS_WEB_APP_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      secret,
+      messageId: conversation.id,
+      name: conversation.name,
+      phone: conversation.phone,
+      customerMessage: conversation.customerMessage,
+      botReply: conversation.botReply,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google Sheets returned HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  if (!data.ok) {
+    throw new Error(data.error || 'Google Sheets rejected the conversation');
+  }
+}
+
+async function loadConversationsFromSheets() {
+  const secret = process.env.GOOGLE_SHEETS_SECRET;
+  if (!secret) {
+    throw new Error('GOOGLE_SHEETS_SECRET is not configured');
+  }
+
+  const url = new URL(SHEETS_WEB_APP_URL);
+  url.searchParams.set('secret', secret);
+
+  const response = await fetch(url, {
+    headers: { accept: 'application/json' },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google Sheets returned HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  if (!data.ok) {
+    throw new Error(data.error || 'Google Sheets rejected the request');
+  }
+
+  return (data.rows || []).map((row) => ({
+    id: row.messageId,
+    time: row.timestamp,
+    name: row.name,
+    phone: row.phone,
+    customerMessage: row.customerMessage,
+    botReply: row.botReply,
+  }));
+}
 
 function rememberConversation(conversation) {
   recentConversations.unshift(conversation);
@@ -108,7 +171,14 @@ export default async function handler(req, res) {
       }
 
       res.setHeader('Cache-Control', 'no-store');
-      return res.status(200).json({ conversations: recentConversations });
+
+      try {
+        const conversations = await loadConversationsFromSheets();
+        return res.status(200).json({ conversations });
+      } catch (error) {
+        console.error('Google Sheets read error:', error);
+        return res.status(200).json({ conversations: recentConversations });
+      }
     }
 
     const mode = req.query['hub.mode'];
@@ -182,14 +252,22 @@ const metaRes = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/m
     const metaResponseText = await metaRes.text();
     console.log("META RESPONSE:", metaRes.status, metaResponseText);
 
-    rememberConversation({
+    const conversation = {
       id: message.id || `${from}-${Date.now()}`,
       time: new Date().toISOString(),
       name: customerName,
       phone: from,
       customerMessage: text,
       botReply: replyText,
-    });
+    };
+
+    rememberConversation(conversation);
+
+    try {
+      await saveConversationToSheets(conversation);
+    } catch (error) {
+      console.error('Google Sheets write error:', error);
+    }
 
     return res.status(200).json({ ok: true });
   } catch (err) {
