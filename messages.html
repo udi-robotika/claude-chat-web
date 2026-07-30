@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>שיחות WhatsApp</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 1100px; margin: 30px auto; padding: 0 16px; color: #222; }
+    h1 { font-size: 24px; }
+    form, #toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 18px; }
+    input, button { font: inherit; padding: 9px 11px; }
+    button { cursor: pointer; }
+    #status { margin: 12px 0; }
+    .conversation { border: 1px solid #ddd; border-radius: 6px; padding: 14px; margin: 12px 0; }
+    .meta { color: #666; font-size: 14px; margin-bottom: 10px; }
+    .message { white-space: pre-wrap; margin: 7px 0; }
+    .label { font-weight: bold; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <h1>שיחות WhatsApp</h1>
+
+  <form id="login">
+    <input id="password" type="password" placeholder="סיסמת כניסה" autocomplete="current-password" required>
+    <button type="submit">כניסה</button>
+  </form>
+
+  <div id="panel" hidden>
+    <div id="toolbar">
+      <button id="refresh" type="button">רענון</button>
+      <span>מוצגות עד 50 השיחות האחרונות</span>
+    </div>
+    <div id="conversations"></div>
+  </div>
+
+  <div id="status"></div>
+
+  <script>
+    const login = document.getElementById('login');
+    const passwordInput = document.getElementById('password');
+    const panel = document.getElementById('panel');
+    const status = document.getElementById('status');
+    const conversations = document.getElementById('conversations');
+    const refresh = document.getElementById('refresh');
+    let password = '';
+
+    function addLine(parent, label, value) {
+      const line = document.createElement('div');
+      line.className = 'message';
+
+      const strong = document.createElement('span');
+      strong.className = 'label';
+      strong.textContent = label + ': ';
+
+      line.appendChild(strong);
+      line.appendChild(document.createTextNode(value || '—'));
+      parent.appendChild(line);
+    }
+
+    function render(items) {
+      conversations.replaceChildren();
+
+      if (!items.length) {
+        conversations.textContent = 'אין עדיין שיחות שמורות. שלח הודעת בדיקה לבוט ואז לחץ רענון.';
+        return;
+      }
+
+      for (const item of items) {
+        const card = document.createElement('article');
+        card.className = 'conversation';
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const time = new Date(item.time).toLocaleString('he-IL');
+        const customer = item.name ? item.name + ' · ' + item.phone : item.phone;
+        meta.textContent = customer + ' · ' + time;
+        card.appendChild(meta);
+
+        addLine(card, 'הלקוח כתב', item.customerMessage);
+        addLine(card, 'הבוט ענה', item.botReply);
+        conversations.appendChild(card);
+      }
+    }
+
+    async function loadMessages() {
+      status.textContent = 'טוען...';
+
+      try {
+        const response = await fetch('/api/whatsapp-webhook?admin=messages', {
+          headers: { 'x-admin-password': password },
+          cache: 'no-store'
+        });
+
+        if (response.status === 401) {
+          throw new Error('הסיסמה אינה נכונה');
+        }
+        if (!response.ok) {
+          throw new Error('לא ניתן לטעון את השיחות כרגע');
+        }
+
+        const data = await response.json();
+        render(data.conversations || []);
+        login.hidden = true;
+        panel.hidden = false;
+        status.textContent = '';
+      } catch (error) {
+        status.textContent = error.message;
+      }
+    }
+
+    login.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      password = passwordInput.value;
+      await loadMessages();
+    });
+
+    refresh.addEventListener('click', loadMessages);
+  </script>
+</body>
+</html>
