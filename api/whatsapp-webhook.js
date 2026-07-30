@@ -1,6 +1,15 @@
 // Vercel Serverless Function - WhatsApp Cloud API webhook
 // מקבל הודעות נכנסות מ-WhatsApp, שולח ל-Claude, ומחזיר תשובה ללקוח דרך WhatsApp Cloud API.
 
+const recentConversations = [];
+
+function rememberConversation(conversation) {
+  recentConversations.unshift(conversation);
+  if (recentConversations.length > 50) {
+    recentConversations.length = 50;
+  }
+}
+
 const SYSTEM_PROMPT = `אתה עוזר וירטואלי של העסק Robotika. ענה על סמך המידע הבא בלבד, ופעל לפי הנחיות הטון שבסוף.
 
 == על העסק ==
@@ -91,6 +100,17 @@ const SYSTEM_PROMPT = `אתה עוזר וירטואלי של העסק Robotika. 
 export default async function handler(req, res) {
   // אימות ה-webhook מול מטא (קריאת GET חד-פעמית בזמן ההגדרה)
   if (req.method === 'GET') {
+    if (req.query?.admin === 'messages') {
+      const password = req.headers?.['x-admin-password'];
+
+      if (!password || password !== process.env.WHATSAPP_VERIFY_TOKEN) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(200).json({ conversations: recentConversations });
+    }
+
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
@@ -121,6 +141,7 @@ export default async function handler(req, res) {
     const from = message.from;
     const text = message.text.body;
     const phoneNumberId = value.metadata.phone_number_id;
+    const customerName = value?.contacts?.[0]?.profile?.name || '';
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     const whatsappToken = process.env.WHATSAPP_TOKEN;
@@ -160,6 +181,15 @@ const metaRes = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/m
 
     const metaResponseText = await metaRes.text();
     console.log("META RESPONSE:", metaRes.status, metaResponseText);
+
+    rememberConversation({
+      id: message.id || `${from}-${Date.now()}`,
+      time: new Date().toISOString(),
+      name: customerName,
+      phone: from,
+      customerMessage: text,
+      botReply: replyText,
+    });
 
     return res.status(200).json({ ok: true });
   } catch (err) {
