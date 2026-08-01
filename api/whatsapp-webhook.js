@@ -3,6 +3,19 @@
 
 const SHEETS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyeCAcrIHAjlTA1OWscBFT7rTXxbxQz7xanJl4hjXA2WceNfAzw5OA_Gch4wvfvyqU/exec';
 const recentConversations = [];
+const CLAUDE_HISTORY_LIMIT = 12;
+
+function normalizePhone(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function isModeMarker(text) {
+  return text === '🔒 מצב ידני' || text === '🤖 מצב בוט';
+}
+
+function cleanAssistantMessage(text) {
+  return String(text || '').replace(/^👤 מענה ידני:\s*/, '').trim();
+}
 
 async function saveConversationToSheets(conversation) {
   const secret = process.env.GOOGLE_SHEETS_SECRET;
@@ -64,6 +77,54 @@ async function loadConversationsFromSheets() {
     customerMessage: row.customerMessage,
     botReply: row.botReply,
   }));
+}
+
+async function buildClaudeMessages(phone, currentMessage) {
+  let conversations;
+
+  try {
+    conversations = await loadConversationsFromSheets();
+  } catch (error) {
+    // A temporary Sheets failure must not stop the WhatsApp bot from replying.
+    console.error('Google Sheets history read error:', error);
+    conversations = recentConversations;
+  }
+
+  const normalizedPhone = normalizePhone(phone);
+  const history = conversations
+    .filter((conversation) => normalizePhone(conversation.phone) === normalizedPhone)
+    .sort((a, b) => {
+      const aTime = Date.parse(a.time || '') || 0;
+      const bTime = Date.parse(b.time || '') || 0;
+      return aTime - bTime;
+    })
+    .flatMap((conversation) => {
+      const messages = [];
+      const customerMessage = String(conversation.customerMessage || '').trim();
+      const rawBotReply = String(conversation.botReply || '').trim();
+
+      if (customerMessage) {
+        messages.push({ role: 'user', content: customerMessage });
+      }
+
+      if (rawBotReply && !isModeMarker(rawBotReply)) {
+        const botReply = cleanAssistantMessage(rawBotReply);
+        if (botReply) messages.push({ role: 'assistant', content: botReply });
+      }
+
+      return messages;
+    });
+
+  // Keep the new customer message plus the 11 preceding messages: 12 total.
+  const lastMessages = [
+    ...history.slice(-(CLAUDE_HISTORY_LIMIT - 1)),
+    { role: 'user', content: currentMessage },
+  ];
+
+  // Claude conversations should begin with the user. This can only remove one
+  // item when the 12-message window happens to start with an assistant reply.
+  if (lastMessages[0]?.role === 'assistant') lastMessages.shift();
+  return lastMessages;
 }
 
 function rememberConversation(conversation) {
@@ -215,6 +276,7 @@ export default async function handler(req, res) {
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     const whatsappToken = process.env.WHATSAPP_TOKEN;
+    const claudeMessages = await buildClaudeMessages(from, text);
 
     const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -227,7 +289,7 @@ export default async function handler(req, res) {
         model: 'claude-sonnet-5',
         max_tokens: 1024,
         system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: text }],
+        messages: claudeMessages,
       }),
     });
     const claudeData = await claudeRes.json();
