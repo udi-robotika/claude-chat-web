@@ -3,206 +3,707 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>שיחות WhatsApp</title>
+  <title>שיחות WhatsApp — Robotika</title>
   <style>
     * { box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; max-width: 1100px; margin: 30px auto; padding: 0 16px; color: #222; background: #f7f7f7; }
-    h1 { font-size: 24px; }
-    form, #toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 18px; }
-    input, textarea, button { font: inherit; padding: 9px 11px; }
+    :root {
+      --green: #087f5b;
+      --green-dark: #066547;
+      --border: #d9dedb;
+      --muted: #66706b;
+      --surface: #fff;
+      --page: #eef1ef;
+      --incoming: #fff;
+      --outgoing: #d9fdd3;
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: Arial, "Segoe UI", sans-serif;
+      color: #1f2924;
+      background: var(--page);
+    }
+    button, input, textarea { font: inherit; }
     button { cursor: pointer; }
     button:disabled { cursor: wait; opacity: .65; }
-    #status { margin: 12px 0; min-height: 20px; }
-    .conversation { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 14px; margin: 12px 0; box-shadow: 0 2px 7px rgba(0,0,0,.04); }
-    .meta { color: #666; font-size: 14px; margin-bottom: 10px; }
-    .message { white-space: pre-wrap; margin: 7px 0; }
-    .label { font-weight: bold; }
-    .reply-form { display: flex; align-items: stretch; gap: 8px; margin: 14px 0 0; }
-    .reply-form textarea { flex: 1; min-height: 44px; max-height: 140px; resize: vertical; border: 1px solid #bbb; border-radius: 7px; }
-    .reply-form button { min-width: 120px; border: 0; border-radius: 7px; background: #087f5b; color: #fff; font-weight: 700; }
-    .reply-result { margin-top: 8px; font-size: 14px; min-height: 18px; }
-    .reply-result.success { color: #087f5b; }
-    .reply-result.error { color: #b42318; }
     [hidden] { display: none !important; }
-    @media (max-width: 650px) {
-      body { margin-top: 16px; }
-      .reply-form { flex-direction: column; }
-      .reply-form button { min-height: 44px; }
+
+    #loginScreen {
+      min-height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+    #login {
+      width: min(390px, 100%);
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 26px;
+      box-shadow: 0 12px 35px rgba(0,0,0,.08);
+    }
+    #login h1 { margin: 0 0 6px; font-size: 24px; }
+    #login p { margin: 0 0 20px; color: var(--muted); }
+    #login input {
+      width: 100%;
+      border: 1px solid #aeb8b2;
+      border-radius: 9px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    #login button {
+      width: 100%;
+      border: 0;
+      border-radius: 9px;
+      padding: 12px;
+      color: #fff;
+      background: var(--green);
+      font-weight: 700;
+    }
+    #loginStatus { min-height: 20px; margin-top: 10px; color: #b42318; }
+
+    #app {
+      height: 100%;
+      max-width: 1500px;
+      margin: 0 auto;
+      background: var(--surface);
+      display: grid;
+      grid-template-columns: 370px minmax(0, 1fr);
+      overflow: hidden;
+      border-inline: 1px solid var(--border);
+    }
+
+    #sidebar {
+      min-width: 0;
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+    }
+    .sidebar-head {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      background: #f7f9f8;
+    }
+    .sidebar-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .sidebar-title h1 { margin: 0; font-size: 21px; }
+    .icon-button {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      padding: 8px 10px;
+    }
+    #search {
+      width: 100%;
+      border: 1px solid #c7cfca;
+      border-radius: 9px;
+      padding: 10px 12px;
+      background: #fff;
+    }
+    #conversationList {
+      overflow-y: auto;
+      flex: 1;
+    }
+    .conversation-row {
+      width: 100%;
+      border: 0;
+      border-bottom: 1px solid #edf0ee;
+      background: #fff;
+      text-align: right;
+      padding: 13px 15px;
+      display: grid;
+      grid-template-columns: 48px minmax(0, 1fr) auto;
+      gap: 11px;
+      align-items: center;
+    }
+    .conversation-row:hover { background: #f6f8f7; }
+    .conversation-row.active { background: #e8f4ee; }
+    .avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #dfe9e3;
+      color: #315c48;
+      font-weight: 700;
+      font-size: 18px;
+    }
+    .row-main { min-width: 0; }
+    .row-name {
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 5px;
+    }
+    .row-preview {
+      color: var(--muted);
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .row-time { color: #77817c; font-size: 12px; align-self: start; padding-top: 3px; }
+    .empty-list { padding: 24px; color: var(--muted); text-align: center; }
+
+    #chatPane {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      background: #efeae2;
+    }
+    #emptyChat {
+      flex: 1;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      text-align: center;
+      padding: 30px;
+      background: #f7f9f8;
+    }
+    #chatView { height: 100%; display: flex; flex-direction: column; }
+    #chatHeader {
+      min-height: 72px;
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
+      background: #f7f9f8;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    #backButton { display: none; }
+    .chat-contact { min-width: 0; }
+    #chatName { font-weight: 700; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #chatPhone { color: var(--muted); font-size: 13px; margin-top: 3px; direction: ltr; text-align: right; }
+    #messageArea {
+      flex: 1;
+      overflow-y: auto;
+      padding: 22px 5%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .bubble-wrap { display: flex; }
+    .bubble-wrap.in { justify-content: flex-start; }
+    .bubble-wrap.out { justify-content: flex-end; }
+    .bubble {
+      max-width: min(76%, 720px);
+      border-radius: 9px;
+      padding: 8px 10px 6px;
+      box-shadow: 0 1px 1px rgba(0,0,0,.08);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      line-height: 1.45;
+    }
+    .bubble-wrap.in .bubble { background: var(--incoming); border-top-right-radius: 2px; }
+    .bubble-wrap.out .bubble { background: var(--outgoing); border-top-left-radius: 2px; }
+    .bubble-source { font-size: 12px; font-weight: 700; color: #37745a; margin-bottom: 4px; }
+    .bubble-time { font-size: 11px; color: #6d7772; margin-top: 5px; direction: ltr; text-align: left; }
+    .date-divider {
+      align-self: center;
+      background: rgba(255,255,255,.85);
+      border-radius: 7px;
+      padding: 5px 10px;
+      color: #59635e;
+      font-size: 12px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.06);
+      margin: 7px 0;
+    }
+
+    #composer {
+      border-top: 1px solid var(--border);
+      background: #f7f9f8;
+      padding: 10px 14px;
+    }
+    #replyForm { display: flex; align-items: flex-end; gap: 9px; }
+    #replyText {
+      flex: 1;
+      min-height: 44px;
+      max-height: 140px;
+      resize: none;
+      border: 1px solid #bcc6c0;
+      border-radius: 12px;
+      padding: 11px 13px;
+      background: #fff;
+      line-height: 1.4;
+    }
+    #sendButton {
+      min-width: 104px;
+      height: 44px;
+      border: 0;
+      border-radius: 10px;
+      color: #fff;
+      background: var(--green);
+      font-weight: 700;
+    }
+    #sendButton:hover { background: var(--green-dark); }
+    #composerStatus { min-height: 18px; font-size: 13px; margin-top: 6px; }
+    #composerStatus.success { color: var(--green); }
+    #composerStatus.error { color: #b42318; }
+    #globalStatus {
+      position: fixed;
+      left: 18px;
+      bottom: 18px;
+      z-index: 20;
+      background: #222;
+      color: #fff;
+      padding: 9px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      opacity: .92;
+    }
+
+    @media (max-width: 760px) {
+      #app { display: block; border: 0; }
+      #sidebar, #chatPane { height: 100%; }
+      #sidebar.mobile-hidden, #chatPane.mobile-hidden { display: none; }
+      #sidebar { border: 0; }
+      #backButton { display: inline-flex; align-items: center; justify-content: center; }
+      #messageArea { padding: 16px 10px; }
+      .bubble { max-width: 88%; }
+      #composer { padding: 8px; }
+      #sendButton { min-width: 78px; }
     }
   </style>
 </head>
 <body>
-  <h1>שיחות WhatsApp</h1>
-
-  <form id="login">
-    <input id="password" type="password" placeholder="סיסמת כניסה" autocomplete="current-password" required>
-    <button type="submit">כניסה</button>
-  </form>
-
-  <div id="panel" hidden>
-    <div id="toolbar">
-      <button id="refresh" type="button">רענון</button>
-      <span>מוצגות עד 100 השיחות האחרונות</span>
-    </div>
-    <div id="conversations"></div>
+  <div id="loginScreen">
+    <form id="login">
+      <h1>שיחות WhatsApp</h1>
+      <p>Robotika Bot</p>
+      <input id="password" type="password" placeholder="סיסמת כניסה" autocomplete="current-password" required>
+      <button type="submit">כניסה</button>
+      <div id="loginStatus"></div>
+    </form>
   </div>
 
-  <div id="status"></div>
+  <main id="app" hidden>
+    <aside id="sidebar">
+      <div class="sidebar-head">
+        <div class="sidebar-title">
+          <h1>שיחות</h1>
+          <button id="refresh" class="icon-button" type="button" title="רענון">רענון</button>
+        </div>
+        <input id="search" type="search" placeholder="חיפוש לפי שם, טלפון או הודעה...">
+      </div>
+      <div id="conversationList"></div>
+    </aside>
+
+    <section id="chatPane" class="mobile-hidden">
+      <div id="emptyChat">
+        <div>
+          <strong>בחר לקוח מרשימת השיחות</strong>
+          <div style="margin-top:8px">כאן תוצג כל היסטוריית השיחה ותוכל לענות.</div>
+        </div>
+      </div>
+
+      <div id="chatView" hidden>
+        <header id="chatHeader">
+          <button id="backButton" class="icon-button" type="button" aria-label="חזרה לרשימה">חזרה</button>
+          <div id="chatAvatar" class="avatar"></div>
+          <div class="chat-contact">
+            <div id="chatName"></div>
+            <div id="chatPhone"></div>
+          </div>
+        </header>
+
+        <div id="messageArea"></div>
+
+        <div id="composer">
+          <form id="replyForm">
+            <textarea id="replyText" rows="1" maxlength="4096" placeholder="כתוב הודעה..." required></textarea>
+            <button id="sendButton" type="submit">שלח</button>
+          </form>
+          <div id="composerStatus"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="globalStatus" hidden></div>
 
   <script>
+    const loginScreen = document.getElementById('loginScreen');
     const login = document.getElementById('login');
     const passwordInput = document.getElementById('password');
-    const panel = document.getElementById('panel');
-    const status = document.getElementById('status');
-    const conversations = document.getElementById('conversations');
-    const refresh = document.getElementById('refresh');
+    const loginStatus = document.getElementById('loginStatus');
+    const app = document.getElementById('app');
+    const sidebar = document.getElementById('sidebar');
+    const chatPane = document.getElementById('chatPane');
+    const refreshButton = document.getElementById('refresh');
+    const searchInput = document.getElementById('search');
+    const conversationList = document.getElementById('conversationList');
+    const emptyChat = document.getElementById('emptyChat');
+    const chatView = document.getElementById('chatView');
+    const backButton = document.getElementById('backButton');
+    const chatAvatar = document.getElementById('chatAvatar');
+    const chatName = document.getElementById('chatName');
+    const chatPhone = document.getElementById('chatPhone');
+    const messageArea = document.getElementById('messageArea');
+    const replyForm = document.getElementById('replyForm');
+    const replyText = document.getElementById('replyText');
+    const sendButton = document.getElementById('sendButton');
+    const composerStatus = document.getElementById('composerStatus');
+    const globalStatus = document.getElementById('globalStatus');
+
     let password = '';
+    let conversations = [];
+    let selectedPhone = '';
+    let refreshTimer = null;
 
-    function addLine(parent, label, value) {
-      const line = document.createElement('div');
-      line.className = 'message';
-
-      const strong = document.createElement('span');
-      strong.className = 'label';
-      strong.textContent = label + ': ';
-
-      line.appendChild(strong);
-      line.appendChild(document.createTextNode(value || '—'));
-      parent.appendChild(line);
+    function parseTime(value) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? new Date(0) : date;
     }
 
-    function createReplyForm(item) {
-      const wrapper = document.createElement('div');
-      const form = document.createElement('form');
-      form.className = 'reply-form';
+    function formatListTime(value) {
+      const date = parseTime(value);
+      if (!date.getTime()) return '';
+      const today = new Date();
+      const sameDay = date.toDateString() === today.toDateString();
+      return sameDay
+        ? date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+        : date.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' });
+    }
 
-      const textarea = document.createElement('textarea');
-      textarea.placeholder = 'כתוב תשובה ידנית ללקוח...';
-      textarea.maxLength = 4096;
-      textarea.required = true;
+    function formatBubbleTime(value) {
+      const date = parseTime(value);
+      return date.getTime()
+        ? date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+        : '';
+    }
 
-      const button = document.createElement('button');
-      button.type = 'submit';
-      button.textContent = 'שלח ללקוח';
+    function dateKey(value) {
+      const date = parseTime(value);
+      return date.getTime() ? date.toDateString() : '';
+    }
 
-      const result = document.createElement('div');
-      result.className = 'reply-result';
+    function formatDateDivider(value) {
+      const date = parseTime(value);
+      if (!date.getTime()) return '';
+      const today = new Date();
+      const yesterday = new Date();
+      yesterday.setDate(today.getDate() - 1);
+      if (date.toDateString() === today.toDateString()) return 'היום';
+      if (date.toDateString() === yesterday.toDateString()) return 'אתמול';
+      return date.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
 
-      form.append(textarea, button);
-      wrapper.append(form, result);
+    function initialFor(name, phone) {
+      const value = (name || '').trim();
+      return value ? value.charAt(0).toUpperCase() : (phone || '?').slice(-2);
+    }
 
-      form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        const text = textarea.value.trim();
-        if (!text) return;
+    function stripManualPrefix(text) {
+      return String(text || '').replace(/^👤\s*מענה ידני:\s*/, '');
+    }
 
-        button.disabled = true;
-        button.textContent = 'שולח...';
-        result.className = 'reply-result';
-        result.textContent = '';
+    function groupRows(rows) {
+      const grouped = new Map();
+      const orderedRows = [...rows].sort((a, b) => parseTime(a.time) - parseTime(b.time));
 
-        try {
-          const response = await fetch('/api/send-whatsapp', {
-            method: 'POST',
-            headers: {
-              'content-type': 'application/json',
-              'x-admin-password': password
-            },
-            body: JSON.stringify({ phone: item.phone, text })
+      for (const row of orderedRows) {
+        const phone = String(row.phone || '').trim();
+        if (!phone) continue;
+
+        if (!grouped.has(phone)) {
+          grouped.set(phone, { phone, name: '', events: [], latestTime: row.time || '' });
+        }
+
+        const conversation = grouped.get(phone);
+        if (row.name) conversation.name = row.name;
+        conversation.latestTime = row.time || conversation.latestTime;
+
+        if (String(row.customerMessage || '').trim()) {
+          conversation.events.push({
+            direction: 'in',
+            source: 'הלקוח',
+            text: String(row.customerMessage).trim(),
+            time: row.time || ''
           });
-
-          const data = await response.json().catch(() => ({}));
-          if (!response.ok) {
-            throw new Error(data.error || 'השליחה נכשלה');
-          }
-
-          textarea.value = '';
-          result.className = 'reply-result success';
-          result.textContent = 'ההודעה נשלחה ללקוח.';
-          setTimeout(loadMessages, 700);
-        } catch (error) {
-          result.className = 'reply-result error';
-          result.textContent = error.message.includes('24')
-            ? 'חלון 24 השעות נסגר. צריך לשלוח תבנית WhatsApp מאושרת.'
-            : error.message;
-        } finally {
-          button.disabled = false;
-          button.textContent = 'שלח ללקוח';
         }
-      });
 
-      textarea.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' && !event.shiftKey) {
-          event.preventDefault();
-          form.requestSubmit();
+        if (String(row.botReply || '').trim()) {
+          const manual = String(row.botReply).startsWith('👤 מענה ידני:');
+          conversation.events.push({
+            direction: 'out',
+            source: manual ? 'נשלח ידנית' : 'יחזקאל',
+            text: manual ? stripManualPrefix(row.botReply) : String(row.botReply).trim(),
+            time: row.time || ''
+          });
         }
-      });
+      }
 
-      return wrapper;
+      return [...grouped.values()]
+        .map((conversation) => {
+          const lastEvent = conversation.events[conversation.events.length - 1];
+          return {
+            ...conversation,
+            lastText: lastEvent?.text || '',
+            latestTime: lastEvent?.time || conversation.latestTime
+          };
+        })
+        .sort((a, b) => parseTime(b.latestTime) - parseTime(a.latestTime));
     }
 
-    function render(items) {
-      conversations.replaceChildren();
+    function showGlobalStatus(text, duration = 1400) {
+      globalStatus.textContent = text;
+      globalStatus.hidden = false;
+      clearTimeout(showGlobalStatus.timer);
+      showGlobalStatus.timer = setTimeout(() => { globalStatus.hidden = true; }, duration);
+    }
 
-      if (!items.length) {
-        conversations.textContent = 'אין עדיין שיחות שמורות. שלח הודעת בדיקה לבוט ואז לחץ רענון.';
+    function selectedConversation() {
+      return conversations.find((item) => item.phone === selectedPhone) || null;
+    }
+
+    function renderList() {
+      const query = searchInput.value.trim().toLowerCase();
+      const filtered = conversations.filter((item) => {
+        const haystack = `${item.name} ${item.phone} ${item.lastText}`.toLowerCase();
+        return !query || haystack.includes(query);
+      });
+
+      conversationList.replaceChildren();
+      if (!filtered.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-list';
+        empty.textContent = query ? 'לא נמצאו שיחות מתאימות.' : 'אין עדיין שיחות שמורות.';
+        conversationList.appendChild(empty);
         return;
       }
 
-      for (const item of items) {
-        const card = document.createElement('article');
-        card.className = 'conversation';
+      for (const item of filtered) {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'conversation-row' + (item.phone === selectedPhone ? ' active' : '');
 
-        const meta = document.createElement('div');
-        meta.className = 'meta';
-        const parsedTime = new Date(item.time);
-        const time = Number.isNaN(parsedTime.getTime())
-          ? (item.time || '—')
-          : parsedTime.toLocaleString('he-IL');
-        const customer = item.name ? item.name + ' · ' + item.phone : item.phone;
-        meta.textContent = customer + ' · ' + time;
-        card.appendChild(meta);
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        avatar.textContent = initialFor(item.name, item.phone);
 
-        addLine(card, 'הלקוח כתב', item.customerMessage);
-        addLine(card, item.botReply?.startsWith('👤 מענה ידני:') ? 'נשלח ידנית' : 'הבוט ענה', item.botReply);
-        if (item.phone) card.appendChild(createReplyForm(item));
-        conversations.appendChild(card);
+        const main = document.createElement('div');
+        main.className = 'row-main';
+        const name = document.createElement('div');
+        name.className = 'row-name';
+        name.textContent = item.name || item.phone;
+        const preview = document.createElement('div');
+        preview.className = 'row-preview';
+        preview.textContent = item.lastText || 'אין תוכן להצגה';
+        main.append(name, preview);
+
+        const time = document.createElement('div');
+        time.className = 'row-time';
+        time.textContent = formatListTime(item.latestTime);
+
+        row.append(avatar, main, time);
+        row.addEventListener('click', () => openConversation(item.phone));
+        conversationList.appendChild(row);
       }
     }
 
-    async function loadMessages() {
-      status.textContent = 'טוען...';
+    function renderChat() {
+      const conversation = selectedConversation();
+      if (!conversation) {
+        chatView.hidden = true;
+        emptyChat.hidden = false;
+        return;
+      }
 
+      emptyChat.hidden = true;
+      chatView.hidden = false;
+      chatName.textContent = conversation.name || conversation.phone;
+      chatPhone.textContent = conversation.phone;
+      chatAvatar.textContent = initialFor(conversation.name, conversation.phone);
+      messageArea.replaceChildren();
+
+      let previousDate = '';
+      for (const event of conversation.events) {
+        const currentDate = dateKey(event.time);
+        if (currentDate && currentDate !== previousDate) {
+          const divider = document.createElement('div');
+          divider.className = 'date-divider';
+          divider.textContent = formatDateDivider(event.time);
+          messageArea.appendChild(divider);
+          previousDate = currentDate;
+        }
+
+        const wrap = document.createElement('div');
+        wrap.className = `bubble-wrap ${event.direction}`;
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+
+        if (event.direction === 'out') {
+          const source = document.createElement('div');
+          source.className = 'bubble-source';
+          source.textContent = event.source;
+          bubble.appendChild(source);
+        }
+
+        const text = document.createElement('div');
+        text.textContent = event.text;
+        const time = document.createElement('div');
+        time.className = 'bubble-time';
+        time.textContent = formatBubbleTime(event.time);
+        bubble.append(text, time);
+        wrap.appendChild(bubble);
+        messageArea.appendChild(wrap);
+      }
+
+      requestAnimationFrame(() => { messageArea.scrollTop = messageArea.scrollHeight; });
+    }
+
+    function openConversation(phone) {
+      selectedPhone = phone;
+      renderList();
+      renderChat();
+      composerStatus.textContent = '';
+      composerStatus.className = '';
+      if (window.innerWidth <= 760) {
+        sidebar.classList.add('mobile-hidden');
+        chatPane.classList.remove('mobile-hidden');
+      }
+      replyText.focus();
+    }
+
+    function closeMobileChat() {
+      chatPane.classList.add('mobile-hidden');
+      sidebar.classList.remove('mobile-hidden');
+    }
+
+    async function loadMessages({ silent = false } = {}) {
+      if (!silent) showGlobalStatus('טוען שיחות...');
       try {
         const response = await fetch('/api/whatsapp-webhook?admin=messages', {
           headers: { 'x-admin-password': password },
           cache: 'no-store'
         });
 
-        if (response.status === 401) {
-          throw new Error('הסיסמה אינה נכונה');
-        }
-        if (!response.ok) {
-          throw new Error('לא ניתן לטעון את השיחות כרגע');
-        }
+        if (response.status === 401) throw new Error('הסיסמה אינה נכונה');
+        if (!response.ok) throw new Error('לא ניתן לטעון את השיחות כרגע');
 
         const data = await response.json();
-        render(data.conversations || []);
-        login.hidden = true;
-        panel.hidden = false;
-        status.textContent = '';
+        conversations = groupRows(data.conversations || []);
+
+        if (selectedPhone && !conversations.some((item) => item.phone === selectedPhone)) {
+          selectedPhone = '';
+        }
+
+        renderList();
+        renderChat();
+        if (!silent) showGlobalStatus('השיחות עודכנו');
       } catch (error) {
-        status.textContent = error.message;
+        if (!app.hidden) showGlobalStatus(error.message, 2500);
+        throw error;
+      }
+    }
+
+    async function sendReply() {
+      const conversation = selectedConversation();
+      const text = replyText.value.trim();
+      if (!conversation || !text) return;
+
+      sendButton.disabled = true;
+      sendButton.textContent = 'שולח...';
+      composerStatus.textContent = '';
+      composerStatus.className = '';
+
+      try {
+        const response = await fetch('/api/send-whatsapp', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-admin-password': password
+          },
+          body: JSON.stringify({ phone: conversation.phone, text })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || 'השליחה נכשלה');
+
+        conversation.events.push({
+          direction: 'out',
+          source: 'נשלח ידנית',
+          text,
+          time: new Date().toISOString()
+        });
+        conversation.lastText = text;
+        conversation.latestTime = conversation.events[conversation.events.length - 1].time;
+        conversations.sort((a, b) => parseTime(b.latestTime) - parseTime(a.latestTime));
+
+        replyText.value = '';
+        replyText.style.height = 'auto';
+        composerStatus.className = 'success';
+        composerStatus.textContent = 'ההודעה נשלחה.';
+        renderList();
+        renderChat();
+        setTimeout(() => loadMessages({ silent: true }).catch(() => {}), 800);
+      } catch (error) {
+        composerStatus.className = 'error';
+        composerStatus.textContent = error.message.includes('24')
+          ? 'חלון 24 השעות נסגר. צריך לשלוח תבנית WhatsApp מאושרת.'
+          : error.message;
+      } finally {
+        sendButton.disabled = false;
+        sendButton.textContent = 'שלח';
+        replyText.focus();
       }
     }
 
     login.addEventListener('submit', async (event) => {
       event.preventDefault();
       password = passwordInput.value;
-      await loadMessages();
+      loginStatus.textContent = '';
+      try {
+        await loadMessages();
+        loginScreen.hidden = true;
+        app.hidden = false;
+        if (window.innerWidth > 760 && conversations.length && !selectedPhone) {
+          openConversation(conversations[0].phone);
+        }
+        clearInterval(refreshTimer);
+        refreshTimer = setInterval(() => loadMessages({ silent: true }).catch(() => {}), 15000);
+      } catch (error) {
+        loginStatus.textContent = error.message;
+      }
     });
 
-    refresh.addEventListener('click', loadMessages);
+    refreshButton.addEventListener('click', () => loadMessages().catch(() => {}));
+    searchInput.addEventListener('input', renderList);
+    backButton.addEventListener('click', closeMobileChat);
+    replyForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      sendReply();
+    });
+    replyText.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        replyForm.requestSubmit();
+      }
+    });
+    replyText.addEventListener('input', () => {
+      replyText.style.height = 'auto';
+      replyText.style.height = Math.min(replyText.scrollHeight, 140) + 'px';
+    });
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 760) {
+        sidebar.classList.remove('mobile-hidden');
+        chatPane.classList.remove('mobile-hidden');
+      } else if (selectedPhone) {
+        sidebar.classList.add('mobile-hidden');
+        chatPane.classList.remove('mobile-hidden');
+      } else {
+        sidebar.classList.remove('mobile-hidden');
+        chatPane.classList.add('mobile-hidden');
+      }
+    });
   </script>
 </body>
 </html>
