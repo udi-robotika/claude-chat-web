@@ -7,21 +7,27 @@
     {
       "source": "/messages.html",
       "destination": "/messages-v3.html"
+    },
+    {
+      "source": "/MESSAGES_2",
+      "destination": "/messages-v3.html"
+    },
+    {
+      "source": "/MESSAGES_2.html",
+      "destination": "/messages-v3.html"
+    },
+    {
+      "source": "/messages_2",
+      "destination": "/messages-v3.html"
+    },
+    {
+      "source": "/messages_2.html",
+      "destination": "/messages-v3.html"
     }
   ],
   "headers": [
     {
-      "source": "/messages.html",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" },
-        { "key": "CDN-Cache-Control", "value": "no-store" },
-        { "key": "Vercel-CDN-Cache-Control", "value": "no-store" },
-        { "key": "Pragma", "value": "no-cache" },
-        { "key": "Expires", "value": "0" }
-      ]
-    },
-    {
-      "source": "/messages-v3.html",
+      "source": "/(messages.html|messages-v3.html|MESSAGES_2|MESSAGES_2.html|messages_2|messages_2.html)",
       "headers": [
         { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" },
         { "key": "CDN-Cache-Control", "value": "no-store" },
