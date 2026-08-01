@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>שיחות WhatsApp — Robotika</title>
+  <style>
+    *{box-sizing:border-box}:root{--green:#087f5b;--green-dark:#066547;--border:#d9dedb;--muted:#66706b;--surface:#fff;--page:#eef1ef;--incoming:#fff;--outgoing:#d9fdd3;--manual-bg:#fff3cd;--manual-border:#e2b93b;--manual-text:#7a5700}html,body{height:100%}body{margin:0;font-family:Arial,"Segoe UI",sans-serif;color:#1f2924;background:var(--page)}button,input,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:wait;opacity:.65}[hidden]{display:none!important}
+    #loginScreen{min-height:100%;display:grid;place-items:center;padding:20px}#login{width:min(390px,100%);background:#fff;border:1px solid var(--border);border-radius:14px;padding:26px;box-shadow:0 12px 35px rgba(0,0,0,.08)}#login h1{margin:0 0 6px;font-size:24px}#login p{margin:0 0 20px;color:var(--muted)}#password{width:100%;border:1px solid #aeb8b2;border-radius:9px;padding:12px;margin-bottom:10px}.remember-row{display:flex;align-items:center;gap:8px;margin:2px 0 14px;color:#37443d;font-size:14px}.remember-row input{width:18px;height:18px}.remember-note{color:var(--muted);font-size:12px;margin:-8px 0 14px}#login button{width:100%;border:0;border-radius:9px;padding:12px;color:#fff;background:var(--green);font-weight:700}#loginStatus{min-height:20px;margin-top:10px;color:#b42318}
+    #app{height:100%;max-width:1500px;margin:0 auto;background:var(--surface);display:grid;grid-template-columns:380px minmax(0,1fr);overflow:hidden;border-inline:1px solid var(--border)}#sidebar{min-width:0;border-left:1px solid var(--border);display:flex;flex-direction:column;background:#fff}.sidebar-head{padding:16px;border-bottom:1px solid var(--border);background:#f7f9f8}.sidebar-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.sidebar-title h1{margin:0;font-size:21px}.toolbar-buttons{display:flex;gap:6px}.icon-button{border:1px solid var(--border);border-radius:8px;background:#fff;padding:8px 10px}#logout{color:#8a1f17}#search{width:100%;border:1px solid #c7cfca;border-radius:9px;padding:10px 12px;background:#fff}#conversationList{overflow-y:auto;flex:1}.conversation-row{width:100%;border:0;border-bottom:1px solid #edf0ee;background:#fff;text-align:right;padding:13px 15px;display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:11px;align-items:center}.conversation-row:hover{background:#f6f8f7}.conversation-row.active{background:#e8f4ee}.conversation-row.manual{background:var(--manual-bg);border-right:5px solid var(--manual-border)}.conversation-row.manual.active{background:#ffe9a8}.avatar{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:#dfe9e3;color:#315c48;font-weight:700;font-size:18px}.row-main{min-width:0}.row-name-line{display:flex;align-items:center;gap:7px;min-width:0}.row-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px}.mode-badge{flex:none;font-size:11px;border-radius:10px;padding:2px 7px;background:#dfe9e3;color:#315c48}.mode-badge.manual{background:#f4c95d;color:#5f4300;font-weight:700}.row-preview{color:var(--muted);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.row-time{color:#77817c;font-size:12px;align-self:start;padding-top:3px}.empty-list{padding:24px;color:var(--muted);text-align:center}
+    #chatPane{min-width:0;display:flex;flex-direction:column;background:#efeae2}#emptyChat{flex:1;display:grid;place-items:center;color:var(--muted);text-align:center;padding:30px;background:#f7f9f8}#chatView{height:100%;display:flex;flex-direction:column}#chatHeader{min-height:76px;padding:10px 16px;border-bottom:1px solid var(--border);background:#f7f9f8;display:flex;align-items:center;gap:12px}#backButton{display:none}.chat-contact{min-width:0;flex:1}#chatName{font-weight:700;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#chatPhone{color:var(--muted);font-size:13px;margin-top:3px;direction:ltr;text-align:right}#modeButton{border:1px solid #aeb8b2;border-radius:9px;padding:9px 12px;background:#fff;font-weight:700;white-space:nowrap}#modeButton.manual{border-color:var(--manual-border);background:var(--manual-bg);color:var(--manual-text)}#modeBanner{padding:8px 16px;background:var(--manual-bg);color:var(--manual-text);border-bottom:1px solid var(--manual-border);font-size:14px;font-weight:700}#messageArea{flex:1;overflow-y:auto;padding:22px 5%;display:flex;flex-direction:column;gap:8px}.bubble-wrap{display:flex}.bubble-wrap.in{justify-content:flex-start}.bubble-wrap.out{justify-content:flex-end}.bubble{max-width:min(76%,720px);border-radius:9px;padding:8px 10px 6px;box-shadow:0 1px 1px rgba(0,0,0,.08);white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.45}.bubble-wrap.in .bubble{background:var(--incoming);border-top-right-radius:2px}.bubble-wrap.out .bubble{background:var(--outgoing);border-top-left-radius:2px}.bubble-source{font-size:12px;font-weight:700;color:#37745a;margin-bottom:4px}.bubble-time{font-size:11px;color:#6d7772;margin-top:5px;direction:ltr;text-align:left}.date-divider{align-self:center;background:rgba(255,255,255,.85);border-radius:7px;padding:5px 10px;color:#59635e;font-size:12px;box-shadow:0 1px 2px rgba(0,0,0,.06);margin:7px 0}
+    #composer{border-top:1px solid var(--border);background:#f7f9f8;padding:10px 14px}#replyForm{display:flex;align-items:flex-end;gap:9px}#replyText{flex:1;min-height:44px;max-height:140px;resize:none;border:1px solid #bcc6c0;border-radius:12px;padding:11px 13px;background:#fff;line-height:1.4}#sendButton{min-width:104px;height:44px;border:0;border-radius:10px;color:#fff;background:var(--green);font-weight:700}#sendButton:hover{background:var(--green-dark)}#composerStatus{min-height:18px;font-size:13px;margin-top:6px}#composerStatus.success{color:var(--green)}#composerStatus.error{color:#b42318}#globalStatus{position:fixed;left:18px;bottom:18px;z-index:20;background:#222;color:#fff;padding:9px 12px;border-radius:8px;font-size:13px;opacity:.92}
+    @media(max-width:760px){#app{display:block;border:0}#sidebar,#chatPane{height:100%}#sidebar.mobile-hidden,#chatPane.mobile-hidden{display:none}#sidebar{border:0}#backButton{display:inline-flex;align-items:center;justify-content:center}#messageArea{padding:16px 10px}.bubble{max-width:88%}#composer{padding:8px}#sendButton{min-width:78px}#modeButton{padding:8px;font-size:13px}}
+  </style>
+</head>
+<body>
+  <div id="loginScreen">
+    <form id="login">
+      <h1>שיחות WhatsApp</h1>
+      <p>Robotika Bot</p>
+      <input id="password" type="password" placeholder="סיסמת כניסה" autocomplete="current-password" required>
+      <label class="remember-row"><input id="rememberMe" type="checkbox" checked> זכור אותי במכשיר הזה</label>
+      <div class="remember-note">מומלץ רק בטלפון או במחשב הפרטי שלך.</div>
+      <button type="submit">כניסה</button>
+      <div id="loginStatus"></div>
+    </form>
+  </div>
+
+  <main id="app" hidden>
+    <aside id="sidebar">
+      <div class="sidebar-head">
+        <div class="sidebar-title">
+          <h1>שיחות</h1>
+          <div class="toolbar-buttons">
+            <button id="refresh" class="icon-button" type="button">רענון</button>
+            <button id="logout" class="icon-button" type="button">יציאה</button>
+          </div>
+        </div>
+        <input id="search" type="search" placeholder="חיפוש לפי שם, טלפון או הודעה...">
+      </div>
+      <div id="conversationList"></div>
+    </aside>
+
+    <section id="chatPane" class="mobile-hidden">
+      <div id="emptyChat"><div><strong>בחר לקוח מרשימת השיחות</strong><div style="margin-top:8px">כאן תוצג כל היסטוריית השיחה ותוכל לענות.</div></div></div>
+      <div id="chatView" hidden>
+        <header id="chatHeader">
+          <button id="backButton" class="icon-button" type="button">חזרה</button>
+          <div id="chatAvatar" class="avatar"></div>
+          <div class="chat-contact"><div id="chatName"></div><div id="chatPhone"></div></div>
+          <button id="modeButton" type="button"></button>
+        </header>
+        <div id="modeBanner" hidden>👤 מצב ידני פעיל — יחזקאל לא יענה עד שתחזיר את השיחה לבוט.</div>
+        <div id="messageArea"></div>
+        <div id="composer">
+          <form id="replyForm">
+            <textarea id="replyText" rows="1" maxlength="4096" placeholder="כתוב הודעה..." required></textarea>
+            <button id="sendButton" type="submit">שלח</button>
+          </form>
+          <div id="composerStatus"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <div id="globalStatus" hidden></div>
+
+  <script>
+    const STORAGE_KEY='robotika_admin_password_v1';
+    const MANUAL_MODE_MARKER='🔒 מצב ידני';
+    const BOT_MODE_MARKER='🤖 מצב בוט';
+    const MANUAL_REPLY_PREFIX='👤 מענה ידני:';
+
+    const $=id=>document.getElementById(id);
+    const loginScreen=$('loginScreen'),login=$('login'),passwordInput=$('password'),rememberMe=$('rememberMe'),loginStatus=$('loginStatus'),app=$('app'),sidebar=$('sidebar'),chatPane=$('chatPane'),refreshButton=$('refresh'),logoutButton=$('logout'),searchInput=$('search'),conversationList=$('conversationList'),emptyChat=$('emptyChat'),chatView=$('chatView'),backButton=$('backButton'),chatAvatar=$('chatAvatar'),chatName=$('chatName'),chatPhone=$('chatPhone'),modeButton=$('modeButton'),modeBanner=$('modeBanner'),messageArea=$('messageArea'),replyForm=$('replyForm'),replyText=$('replyText'),sendButton=$('sendButton'),composerStatus=$('composerStatus'),globalStatus=$('globalStatus');
+
+    let password='',conversations=[],selectedPhone='',refreshTimer=null;
+    const parseTime=value=>{const d=new Date(value);return Number.isNaN(d.getTime())?new Date(0):d};
+    const formatListTime=value=>{const d=parseTime(value);if(!d.getTime())return'';const t=new Date();return d.toDateString()===t.toDateString()?d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit'})};
+    const formatBubbleTime=value=>{const d=parseTime(value);return d.getTime()?d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}):''};
+    const dateKey=value=>{const d=parseTime(value);return d.getTime()?d.toDateString():''};
+    function formatDateDivider(value){const d=parseTime(value);if(!d.getTime())return'';const t=new Date(),y=new Date();y.setDate(t.getDate()-1);if(d.toDateString()===t.toDateString())return'היום';if(d.toDateString()===y.toDateString())return'אתמול';return d.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'})}
+    const initialFor=(name,phone)=>{const v=(name||'').trim();return v?v.charAt(0).toUpperCase():(phone||'?').slice(-2)};
+    const stripManualPrefix=text=>String(text||'').replace(/^👤\s*מענה ידני:\s*/,'');
+
+    function groupRows(rows){
+      const grouped=new Map();
+      for(const row of [...rows].sort((a,b)=>parseTime(a.time)-parseTime(b.time))){
+        const phone=String(row.phone||'').replace(/\D/g,'');if(!phone)continue;
+        if(!grouped.has(phone))grouped.set(phone,{phone,name:'',mode:'bot',events:[],latestTime:row.time||''});
+        const c=grouped.get(phone);if(row.name)c.name=row.name;c.latestTime=row.time||c.latestTime;
+        const reply=String(row.botReply||'').trim();
+        if(reply.startsWith(BOT_MODE_MARKER)){c.mode='bot';continue}
+        if(reply.startsWith(MANUAL_MODE_MARKER)){c.mode='manual';continue}
+        if(String(row.customerMessage||'').trim())c.events.push({direction:'in',source:'הלקוח',text:String(row.customerMessage).trim(),time:row.time||''});
+        if(reply){const manual=reply.startsWith(MANUAL_REPLY_PREFIX);if(manual)c.mode='manual';c.events.push({direction:'out',source:manual?'נשלח ידנית':'יחזקאל',text:manual?stripManualPrefix(reply):reply,time:row.time||''})}
+      }
+      return [...grouped.values()].map(c=>{const e=c.events[c.events.length-1];return{...c,lastText:e?.text||'',latestTime:e?.time||c.latestTime}}).sort((a,b)=>parseTime(b.latestTime)-parseTime(a.latestTime));
+    }
+
+    function showGlobalStatus(text,duration=1400){globalStatus.textContent=text;globalStatus.hidden=false;clearTimeout(showGlobalStatus.timer);showGlobalStatus.timer=setTimeout(()=>globalStatus.hidden=true,duration)}
+    const selectedConversation=()=>conversations.find(item=>item.phone===selectedPhone)||null;
+
+    function renderList(){
+      const q=searchInput.value.trim().toLowerCase();const filtered=conversations.filter(item=>`${item.name} ${item.phone} ${item.lastText}`.toLowerCase().includes(q));conversationList.replaceChildren();
+      if(!filtered.length){const e=document.createElement('div');e.className='empty-list';e.textContent=q?'לא נמצאו שיחות מתאימות.':'אין עדיין שיחות שמורות.';conversationList.appendChild(e);return}
+      for(const item of filtered){
+        const row=document.createElement('button');row.type='button';row.className='conversation-row'+(item.phone===selectedPhone?' active':'')+(item.mode==='manual'?' manual':'');
+        const avatar=document.createElement('div');avatar.className='avatar';avatar.textContent=initialFor(item.name,item.phone);
+        const main=document.createElement('div');main.className='row-main';const line=document.createElement('div');line.className='row-name-line';const name=document.createElement('div');name.className='row-name';name.textContent=item.name||item.phone;const badge=document.createElement('span');badge.className='mode-badge'+(item.mode==='manual'?' manual':'');badge.textContent=item.mode==='manual'?'ידני':'בוט';line.append(name,badge);const preview=document.createElement('div');preview.className='row-preview';preview.textContent=item.lastText||'אין תוכן להצגה';main.append(line,preview);const time=document.createElement('div');time.className='row-time';time.textContent=formatListTime(item.latestTime);row.append(avatar,main,time);row.addEventListener('click',()=>openConversation(item.phone));conversationList.appendChild(row);
+      }
+    }
+
+    function renderChat(){
+      const c=selectedConversation();if(!c){chatView.hidden=true;emptyChat.hidden=false;return}emptyChat.hidden=true;chatView.hidden=false;chatName.textContent=c.name||c.phone;chatPhone.textContent=c.phone;chatAvatar.textContent=initialFor(c.name,c.phone);const manual=c.mode==='manual';modeButton.textContent=manual?'החזר לבוט':'עבור למענה ידני';modeButton.className=manual?'manual':'';modeBanner.hidden=!manual;messageArea.replaceChildren();let previous='';
+      for(const event of c.events){const current=dateKey(event.time);if(current&&current!==previous){const d=document.createElement('div');d.className='date-divider';d.textContent=formatDateDivider(event.time);messageArea.appendChild(d);previous=current}const wrap=document.createElement('div');wrap.className=`bubble-wrap ${event.direction}`;const bubble=document.createElement('div');bubble.className='bubble';if(event.direction==='out'){const source=document.createElement('div');source.className='bubble-source';source.textContent=event.source;bubble.appendChild(source)}const text=document.createElement('div');text.textContent=event.text;const time=document.createElement('div');time.className='bubble-time';time.textContent=formatBubbleTime(event.time);bubble.append(text,time);wrap.appendChild(bubble);messageArea.appendChild(wrap)}requestAnimationFrame(()=>messageArea.scrollTop=messageArea.scrollHeight);
+    }
+
+    function openConversation(phone){selectedPhone=phone;renderList();renderChat();composerStatus.textContent='';composerStatus.className='';if(innerWidth<=760){sidebar.classList.add('mobile-hidden');chatPane.classList.remove('mobile-hidden')}replyText.focus()}
+
+    async function loadMessages({silent=false}={}){if(!silent)showGlobalStatus('טוען שיחות...');const response=await fetch('/api/whatsapp-webhook?admin=messages',{headers:{'x-admin-password':password},cache:'no-store'});if(response.status===401)throw new Error('הסיסמה אינה נכונה');if(!response.ok)throw new Error('לא ניתן לטעון את השיחות כרגע');const data=await response.json();conversations=groupRows(data.conversations||[]);if(selectedPhone&&!conversations.some(item=>item.phone===selectedPhone))selectedPhone='';renderList();renderChat();if(!silent)showGlobalStatus('השיחות עודכנו')}
+
+    async function enterApp(candidate,remember){password=candidate;await loadMessages();if(remember)localStorage.setItem(STORAGE_KEY,candidate);else localStorage.removeItem(STORAGE_KEY);loginScreen.hidden=true;app.hidden=false;if(innerWidth>760&&conversations.length&&!selectedPhone)openConversation(conversations[0].phone);clearInterval(refreshTimer);refreshTimer=setInterval(()=>loadMessages({silent:true}).catch(()=>{}),15000)}
+
+    async function setMode(mode){const c=selectedConversation();if(!c)return;modeButton.disabled=true;try{const response=await fetch('/api/conversation-mode',{method:'POST',headers:{'content-type':'application/json','x-admin-password':password},body:JSON.stringify({phone:c.phone,mode})});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'שינוי מצב השיחה נכשל');c.mode=mode;renderList();renderChat();showGlobalStatus(mode==='manual'?'השיחה עברה למענה ידני':'השיחה חזרה לבוט');setTimeout(()=>loadMessages({silent:true}).catch(()=>{}),500)}catch(error){showGlobalStatus(error.message,2600)}finally{modeButton.disabled=false}}
+
+    async function sendReply(){const c=selectedConversation(),text=replyText.value.trim();if(!c||!text)return;sendButton.disabled=true;sendButton.textContent='שולח...';composerStatus.textContent='';composerStatus.className='';try{const response=await fetch('/api/send-whatsapp',{method:'POST',headers:{'content-type':'application/json','x-admin-password':password},body:JSON.stringify({phone:c.phone,text})});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'השליחה נכשלה');const now=new Date().toISOString();c.mode='manual';c.events.push({direction:'out',source:'נשלח ידנית',text,time:now});c.lastText=text;c.latestTime=now;conversations.sort((a,b)=>parseTime(b.latestTime)-parseTime(a.latestTime));replyText.value='';replyText.style.height='auto';composerStatus.className='success';composerStatus.textContent='ההודעה נשלחה והשיחה עברה למצב ידני.';renderList();renderChat();setTimeout(()=>loadMessages({silent:true}).catch(()=>{}),700)}catch(error){composerStatus.className='error';composerStatus.textContent=error.message.includes('24')?'חלון 24 השעות נסגר. צריך לשלוח תבנית WhatsApp מאושרת.':error.message}finally{sendButton.disabled=false;sendButton.textContent='שלח';replyText.focus()}}
+
+    login.addEventListener('submit',async event=>{event.preventDefault();loginStatus.textContent='';try{await enterApp(passwordInput.value,rememberMe.checked)}catch(error){loginStatus.textContent=error.message}});
+    refreshButton.addEventListener('click',()=>loadMessages().catch(error=>showGlobalStatus(error.message,2500)));
+    logoutButton.addEventListener('click',()=>{localStorage.removeItem(STORAGE_KEY);password='';clearInterval(refreshTimer);location.reload()});
+    searchInput.addEventListener('input',renderList);
+    backButton.addEventListener('click',()=>{chatPane.classList.add('mobile-hidden');sidebar.classList.remove('mobile-hidden')});
+    modeButton.addEventListener('click',()=>{const c=selectedConversation();if(c)setMode(c.mode==='manual'?'bot':'manual')});
+    replyForm.addEventListener('submit',event=>{event.preventDefault();sendReply()});
+    replyText.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();replyForm.requestSubmit()}});
+    replyText.addEventListener('input',()=>{replyText.style.height='auto';replyText.style.height=Math.min(replyText.scrollHeight,140)+'px'});
+    addEventListener('resize',()=>{if(innerWidth>760){sidebar.classList.remove('mobile-hidden');chatPane.classList.remove('mobile-hidden')}else if(selectedPhone){sidebar.classList.add('mobile-hidden');chatPane.classList.remove('mobile-hidden')}else{sidebar.classList.remove('mobile-hidden');chatPane.classList.add('mobile-hidden')}});
+
+    (async()=>{const saved=localStorage.getItem(STORAGE_KEY);if(!saved)return;passwordInput.value=saved;rememberMe.checked=true;loginStatus.textContent='מתחבר אוטומטית...';try{await enterApp(saved,true)}catch(error){localStorage.removeItem(STORAGE_KEY);passwordInput.value='';loginStatus.textContent='הכניסה השמורה אינה תקפה. הזן סיסמה מחדש.'}})();
+  </script>
+</body>
+</html>
