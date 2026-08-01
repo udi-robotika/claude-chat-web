@@ -3,6 +3,10 @@
     {
       "source": "/api/whatsapp-webhook",
       "destination": "/api/whatsapp-entry"
+    },
+    {
+      "source": "/messages.html",
+      "destination": "/messages-v2.html"
     }
   ]
 }
