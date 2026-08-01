@@ -5,37 +5,30 @@ function normalizePhone(value) {
   return String(value || '').replace(/\D/g, '');
 }
 
-async function saveManualReply({ phone, text }) {
+async function saveSheetRow({ messageId, phone, botReply }) {
   const secret = process.env.GOOGLE_SHEETS_SECRET;
-  if (!secret) return;
+  if (!secret) throw new Error('GOOGLE_SHEETS_SECRET is not configured');
 
   const response = await fetch(SHEETS_WEB_APP_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       secret,
-      messageId: `manual-${phone}-${Date.now()}`,
+      messageId,
       name: '',
       phone,
       customerMessage: '',
-      botReply: `👤 מענה ידני: ${text}`,
+      botReply,
     }),
   });
 
-  if (!response.ok) {
-    throw new Error(`Google Sheets returned HTTP ${response.status}`);
-  }
-
+  if (!response.ok) throw new Error(`Google Sheets returned HTTP ${response.status}`);
   const data = await response.json();
-  if (!data.ok) {
-    throw new Error(data.error || 'Google Sheets rejected the manual reply');
-  }
+  if (!data.ok) throw new Error(data.error || 'Google Sheets rejected the row');
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const password = req.headers?.['x-admin-password'];
   if (!password || password !== process.env.WHATSAPP_VERIFY_TOKEN) {
@@ -44,25 +37,22 @@ export default async function handler(req, res) {
 
   const phone = normalizePhone(req.body?.phone);
   const text = String(req.body?.text || '').trim();
-
-  if (!/^\d{8,15}$/.test(phone)) {
-    return res.status(400).json({ error: 'מספר הטלפון אינו תקין' });
-  }
-  if (!text) {
-    return res.status(400).json({ error: 'יש לכתוב הודעה' });
-  }
-  if (text.length > 4096) {
-    return res.status(400).json({ error: 'ההודעה ארוכה מדי' });
-  }
+  if (!/^\d{8,15}$/.test(phone)) return res.status(400).json({ error: 'מספר הטלפון אינו תקין' });
+  if (!text) return res.status(400).json({ error: 'יש לכתוב הודעה' });
+  if (text.length > 4096) return res.status(400).json({ error: 'ההודעה ארוכה מדי' });
 
   const token = process.env.WHATSAPP_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || DEFAULT_PHONE_NUMBER_ID;
-
-  if (!token) {
-    return res.status(500).json({ error: 'WHATSAPP_TOKEN is not configured' });
-  }
+  if (!token) return res.status(500).json({ error: 'WHATSAPP_TOKEN is not configured' });
 
   try {
+    // Set manual mode before sending, so a very fast customer reply cannot reach Claude.
+    await saveSheetRow({
+      messageId: `mode-manual-${phone}-${Date.now()}`,
+      phone,
+      botReply: '🔒 מצב ידני',
+    });
+
     const metaRes = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
       method: 'POST',
       headers: {
@@ -85,12 +75,20 @@ export default async function handler(req, res) {
     }
 
     try {
-      await saveManualReply({ phone, text });
+      await saveSheetRow({
+        messageId: `manual-${phone}-${Date.now()}`,
+        phone,
+        botReply: `👤 מענה ידני: ${text}`,
+      });
     } catch (error) {
       console.error('Manual reply log error:', error);
     }
 
-    return res.status(200).json({ ok: true, messageId: metaData?.messages?.[0]?.id || null });
+    return res.status(200).json({
+      ok: true,
+      mode: 'manual',
+      messageId: metaData?.messages?.[0]?.id || null,
+    });
   } catch (error) {
     console.error('Manual WhatsApp send error:', error);
     return res.status(500).json({ error: 'לא ניתן לשלוח כרגע. נסה שוב בעוד רגע.' });
