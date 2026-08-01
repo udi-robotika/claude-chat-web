@@ -5,17 +5,30 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>שיחות WhatsApp</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 1100px; margin: 30px auto; padding: 0 16px; color: #222; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; max-width: 1100px; margin: 30px auto; padding: 0 16px; color: #222; background: #f7f7f7; }
     h1 { font-size: 24px; }
     form, #toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 18px; }
-    input, button { font: inherit; padding: 9px 11px; }
+    input, textarea, button { font: inherit; padding: 9px 11px; }
     button { cursor: pointer; }
-    #status { margin: 12px 0; }
-    .conversation { border: 1px solid #ddd; border-radius: 6px; padding: 14px; margin: 12px 0; }
+    button:disabled { cursor: wait; opacity: .65; }
+    #status { margin: 12px 0; min-height: 20px; }
+    .conversation { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 14px; margin: 12px 0; box-shadow: 0 2px 7px rgba(0,0,0,.04); }
     .meta { color: #666; font-size: 14px; margin-bottom: 10px; }
     .message { white-space: pre-wrap; margin: 7px 0; }
     .label { font-weight: bold; }
+    .reply-form { display: flex; align-items: stretch; gap: 8px; margin: 14px 0 0; }
+    .reply-form textarea { flex: 1; min-height: 44px; max-height: 140px; resize: vertical; border: 1px solid #bbb; border-radius: 7px; }
+    .reply-form button { min-width: 120px; border: 0; border-radius: 7px; background: #087f5b; color: #fff; font-weight: 700; }
+    .reply-result { margin-top: 8px; font-size: 14px; min-height: 18px; }
+    .reply-result.success { color: #087f5b; }
+    .reply-result.error { color: #b42318; }
     [hidden] { display: none !important; }
+    @media (max-width: 650px) {
+      body { margin-top: 16px; }
+      .reply-form { flex-direction: column; }
+      .reply-form button { min-height: 44px; }
+    }
   </style>
 </head>
 <body>
@@ -58,6 +71,76 @@
       parent.appendChild(line);
     }
 
+    function createReplyForm(item) {
+      const wrapper = document.createElement('div');
+      const form = document.createElement('form');
+      form.className = 'reply-form';
+
+      const textarea = document.createElement('textarea');
+      textarea.placeholder = 'כתוב תשובה ידנית ללקוח...';
+      textarea.maxLength = 4096;
+      textarea.required = true;
+
+      const button = document.createElement('button');
+      button.type = 'submit';
+      button.textContent = 'שלח ללקוח';
+
+      const result = document.createElement('div');
+      result.className = 'reply-result';
+
+      form.append(textarea, button);
+      wrapper.append(form, result);
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const text = textarea.value.trim();
+        if (!text) return;
+
+        button.disabled = true;
+        button.textContent = 'שולח...';
+        result.className = 'reply-result';
+        result.textContent = '';
+
+        try {
+          const response = await fetch('/api/send-whatsapp', {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'x-admin-password': password
+            },
+            body: JSON.stringify({ phone: item.phone, text })
+          });
+
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(data.error || 'השליחה נכשלה');
+          }
+
+          textarea.value = '';
+          result.className = 'reply-result success';
+          result.textContent = 'ההודעה נשלחה ללקוח.';
+          setTimeout(loadMessages, 700);
+        } catch (error) {
+          result.className = 'reply-result error';
+          result.textContent = error.message.includes('24')
+            ? 'חלון 24 השעות נסגר. צריך לשלוח תבנית WhatsApp מאושרת.'
+            : error.message;
+        } finally {
+          button.disabled = false;
+          button.textContent = 'שלח ללקוח';
+        }
+      });
+
+      textarea.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          form.requestSubmit();
+        }
+      });
+
+      return wrapper;
+    }
+
     function render(items) {
       conversations.replaceChildren();
 
@@ -81,7 +164,8 @@
         card.appendChild(meta);
 
         addLine(card, 'הלקוח כתב', item.customerMessage);
-        addLine(card, 'הבוט ענה', item.botReply);
+        addLine(card, item.botReply?.startsWith('👤 מענה ידני:') ? 'נשלח ידנית' : 'הבוט ענה', item.botReply);
+        if (item.phone) card.appendChild(createReplyForm(item));
         conversations.appendChild(card);
       }
     }
