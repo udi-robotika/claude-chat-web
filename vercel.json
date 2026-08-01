@@ -6,7 +6,7 @@
     },
     {
       "source": "/messages.html",
-      "destination": "/messages-v2.html"
+      "destination": "/messages-v3.html"
     }
   ]
 }
