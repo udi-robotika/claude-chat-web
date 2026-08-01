@@ -1,0 +1,1 @@
+Manual takeover hotfix: WhatsApp webhook requests are gated by the latest conversation mode stored in the existing Google Sheets log. Manual replies and explicit manual-mode markers suppress Claude replies; bot-mode markers restore automation.
