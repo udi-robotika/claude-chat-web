@@ -141,6 +141,22 @@ function rememberConversation(conversation) {
   }
 }
 
+const NEW_LEAD_OPENING_REPLY = "היי! אנו שמחים שהגעתם למרכז לרובוטיקה וארדואינו בת״א 😊\n\nקורס רובוטיקה — 10 מפגשים:\nhttps://www.robotika.co.il/קורס-רובוטיקה-ארדואינו\n\nהתוכנית המלאה למייקרים — 25 מפגשים:\nhttps://www.robotika.co.il/קורס-מייקרים\n\nאשמח לענות על כל שאלה ולעזור לכם לבחור את הקורס המתאים 😊";
+
+function isGenericAdOpening(text) {
+  const normalized = String(text || '')
+    .trim()
+    .replace(/[?!.,״"'’]+$/g, '')
+    .replace(/\s+/g, ' ');
+
+  return [
+    'אפשר לקבל מידע נוסף על זה',
+    'אשמח לקבל מידע נוסף על זה',
+    'אפשר לקבל מידע נוסף',
+    'אשמח לקבל מידע נוסף',
+  ].includes(normalized);
+}
+
 const SYSTEM_PROMPT = `שמך יחזקאל. אתה הנציג הדיגיטלי של המרכז לרובוטיקה וארדואינו בסנטר. אם שואלים מי אתה או מה שמך, ענה בדיוק: "שלום! 😊 שמי יחזקאל, אני הנציג הדיגיטלי של המרכז לרובוטיקה וארדואינו בסנטר. איך אפשר לעזור לך?" ענה על סמך המידע הבא בלבד, ופעל לפי הנחיות הטון שבסוף.
 
 == על העסק ==
@@ -306,24 +322,36 @@ export default async function handler(req, res) {
     const whatsappToken = process.env.WHATSAPP_TOKEN;
     const claudeMessages = await buildClaudeMessages(from, text);
 
-    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-5',
-        max_tokens: 1024,
-        system: SYSTEM_PROMPT,
-        messages: claudeMessages,
-      }),
-    });
-    const claudeData = await claudeRes.json();
-    const replyText =
-      (claudeData.content || []).map((c) => c.text || '').join('') ||
-      'מצטערים, לא הצלחנו לענות כרגע. אפשר לפנות אלינו בטלפון 054-5639120.';
+    const customerMessageCount = claudeMessages.filter(
+      (item) => item.role === 'user'
+    ).length;
+
+    let replyText;
+
+    // הודעת ברירת המחדל שמגיעה ממודעת פייסבוק אינה שאלה שנוסחה בידי הלקוח.
+    // בשתי הפניות הראשונות נשלח מידע שימושי וקישורים באופן מיידי.
+    if (customerMessageCount <= 2 && isGenericAdOpening(text)) {
+      replyText = NEW_LEAD_OPENING_REPLY;
+    } else {
+      const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-5',
+          max_tokens: 1024,
+          system: SYSTEM_PROMPT,
+          messages: claudeMessages,
+        }),
+      });
+      const claudeData = await claudeRes.json();
+      replyText =
+        (claudeData.content || []).map((c) => c.text || '').join('') ||
+        'מצטערים, לא הצלחנו לענות כרגע. אפשר לפנות אלינו בטלפון 054-5639120.';
+    }
 
 const metaRes = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/messages`, {
   method: 'POST',
