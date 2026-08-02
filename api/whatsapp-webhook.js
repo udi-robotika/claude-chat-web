@@ -17,6 +17,13 @@ function cleanAssistantMessage(text) {
   return String(text || '').replace(/^👤 מענה ידני:\s*/, '').trim();
 }
 
+function compactTextForSheets(text) {
+  return String(text || '')
+    .replace(/\s*\n+\s*/g, '  •  ')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
+
 async function saveConversationToSheets(conversation) {
   const secret = process.env.GOOGLE_SHEETS_SECRET;
   if (!secret) {
@@ -31,8 +38,8 @@ async function saveConversationToSheets(conversation) {
       messageId: conversation.id,
       name: conversation.name,
       phone: conversation.phone,
-      customerMessage: conversation.customerMessage,
-      botReply: conversation.botReply,
+      customerMessage: compactTextForSheets(conversation.customerMessage),
+      botReply: compactTextForSheets(conversation.botReply),
     }),
   });
 
