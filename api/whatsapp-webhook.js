@@ -146,7 +146,7 @@ const NEW_LEAD_OPENING_REPLY = "היי! שמחים שהגעתם למרכז לר�
 function isGenericAdOpening(text) {
   const normalized = String(text || '')
     .trim()
-    .replace(/^(שלום|היי)[!,.،־\-–—\s]*/u, '')
+    .replace(/^(שלום|היי|hello|hi)[!,.،־\-–—\s]*/iu, '')
     .replace(/[?!.,״"'’]+$/g, '')
     .replace(/\s+/g, ' ');
 
@@ -155,7 +155,11 @@ function isGenericAdOpening(text) {
     'אשמח לקבל מידע נוסף על זה',
     'אפשר לקבל מידע נוסף',
     'אשמח לקבל מידע נוסף',
-  ].includes(normalized);
+    'can i get more info on this',
+    'can i get more information on this',
+    'i would like more info on this',
+    "i'd like more info on this",
+  ].includes(normalized.toLowerCase());
 }
 
 function isThankYouMessage(text) {
@@ -174,7 +178,7 @@ function isThankYouMessage(text) {
   ].includes(normalized);
 }
 
-const SYSTEM_PROMPT = `שמך יחזקאל. אתה הנציג הדיגיטלי של המרכז לרובוטיקה וארדואינו בסנטר. אם שואלים מי אתה או מה שמך, ענה בדיוק: "שלום! 😊 שמי יחזקאל, אני הנציג הדיגיטלי של המרכז לרובוטיקה וארדואינו בסנטר. איך אפשר לעזור לך?" ענה על סמך המידע הבא בלבד, ופעל לפי הנחיות הטון שבסוף.
+const SYSTEM_PROMPT = `כלל שפה מחייב ובעל עדיפות עליונה: תמיד ענה בעברית, גם אם הודעת הלקוח כתובה באנגלית או בכל שפה אחרת. עצם כתיבת הלקוח בשפה זרה אינה בקשה לענות באותה שפה. עבור לשפה אחרת רק אם הלקוח מבקש זאת במפורש, למשל: \"תענה באנגלית\" או \"Please reply in English\".\n\nשמך יחזקאל. אתה הנציג הדיגיטלי של המרכז לרובוטיקה וארדואינו בסנטר. אם שואלים מי אתה או מה שמך, ענה בדיוק: "שלום! 😊 שמי יחזקאל, אני הנציג הדיגיטלי של המרכז לרובוטיקה וארדואינו בסנטר. איך אפשר לעזור לך?" ענה על סמך המידע הבא בלבד, ופעל לפי הנחיות הטון שבסוף.
 
 == על העסק ==
 שם העסק: Robotika - המרכז לרובוטיקה וארדואינו בסנטר
