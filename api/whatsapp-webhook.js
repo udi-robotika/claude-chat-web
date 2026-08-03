@@ -158,6 +158,22 @@ function isGenericAdOpening(text) {
   ].includes(normalized);
 }
 
+function isThankYouMessage(text) {
+  const normalized = String(text || '')
+    .trim()
+    .replace(/[!?.،,״"'’😊🙏🙂❤️❤\s]+$/gu, '')
+    .replace(/\s+/g, ' ');
+
+  return [
+    'תודה',
+    'תודה רבה',
+    'תודה רבה לך',
+    'המון תודה',
+    'תודה לכם',
+    'תודה רבה לכם',
+  ].includes(normalized);
+}
+
 const SYSTEM_PROMPT = `שמך יחזקאל. אתה הנציג הדיגיטלי של המרכז לרובוטיקה וארדואינו בסנטר. אם שואלים מי אתה או מה שמך, ענה בדיוק: "שלום! 😊 שמי יחזקאל, אני הנציג הדיגיטלי של המרכז לרובוטיקה וארדואינו בסנטר. איך אפשר לעזור לך?" ענה על סמך המידע הבא בלבד, ופעל לפי הנחיות הטון שבסוף.
 
 == על העסק ==
@@ -336,6 +352,8 @@ export default async function handler(req, res) {
     // מזהים אותה גם עם "שלום" או "היי" בתחילתה, ובכל שלב בשיחה.
     if (isGenericAdOpening(text)) {
       replyText = NEW_LEAD_OPENING_REPLY;
+    } else if (isThankYouMessage(text)) {
+      replyText = 'בשמחה! 😊';
     } else {
       const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
