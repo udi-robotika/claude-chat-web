@@ -59,14 +59,11 @@ async function loadConversationsFromSheets() {
     throw new Error('GOOGLE_SHEETS_SECRET is not configured');
   }
 
-  const url = new URL(SHEETS_WEB_APP_URL);
-  url.searchParams.set('secret', secret);
-
-  const response = await fetch(url, {
-    headers: { accept: 'application/json' },
-    cache: 'no-store',
-  });
-
+const response = await fetch(SHEETS_WEB_APP_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ secret, action: 'list' }),
+});
   if (!response.ok) {
     throw new Error(`Google Sheets returned HTTP ${response.status}`);
   }
