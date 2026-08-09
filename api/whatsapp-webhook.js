@@ -119,16 +119,34 @@ async function buildClaudeMessages(phone, currentMessage) {
       return messages;
     });
 
-  // Keep the new customer message plus the 11 preceding messages: 12 total.
-  const lastMessages = [
-    ...history.slice(-(CLAUDE_HISTORY_LIMIT - 1)),
-    { role: 'user', content: currentMessage },
-  ];
+// Merge consecutive same-role messages (e.g. orphaned manual replies saved
+    // without a matching customer message) so the sequence always alternates
+    // user/assistant, as the Claude API requires.
+    const mergedHistory = mergeConsecutiveRoles(history);
 
-  // Claude conversations should begin with the user. This can only remove one
-  // item when the 12-message window happens to start with an assistant reply.
-  if (lastMessages[0]?.role === 'assistant') lastMessages.shift();
-  return lastMessages;
+    // Keep the new customer message plus the 11 preceding messages: 12 total.
+    const lastMessages = mergeConsecutiveRoles([
+          ...mergedHistory.slice(-(CLAUDE_HISTORY_LIMIT - 1)),
+      { role: 'user', content: currentMessage },
+        ]);
+
+    // Claude conversations should begin with the user. This can only remove one
+    // item when the 12-message window happens to start with an assistant reply.
+    if (lastMessages[0]?.role === 'assistant') lastMessages.shift();
+    return lastMessages;
+}
+
+function mergeConsecutiveRoles(messages) {
+    const merged = [];
+    for (const message of messages) {
+          const last = merged[merged.length - 1];
+          if (last && last.role === message.role) {
+                  last.content = `${last.content}\n${message.content}`;
+          } else {
+                  merged.push({ role: message.role, content: message.content });
+          }
+    }
+    return merged;
 }
 
 function rememberConversation(conversation) {
@@ -371,6 +389,9 @@ export default async function handler(req, res) {
         }),
       });
       const claudeData = await claudeRes.json();
+      if (!claudeRes.ok) {
+          console.error('Claude API error:', claudeRes.status, JSON.stringify(claudeData));
+      }
       replyText =
         (claudeData.content || []).map((c) => c.text || '').join('') ||
         'מצטערים, לא הצלחנו לענות כרגע. אפשר לפנות אלינו בטלפון 054-5639120.';
