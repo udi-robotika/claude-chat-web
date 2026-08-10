@@ -3,6 +3,7 @@
 
 const SHEETS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyeCAcrIHAjlTA1OWscBFT7rTXxbxQz7xanJl4hjXA2WceNfAzw5OA_Gch4wvfvyqU/exec';
 const recentConversations = [];
+const processedMessageIds = new Set();
 const CLAUDE_HISTORY_LIMIT = 12;
 
 function normalizePhone(value) {
@@ -358,29 +359,40 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    const from = message.from;
-    const text = message.text.body;
-    const phoneNumberId = value.metadata.phone_number_id;
-    const customerName = value?.contacts?.[0]?.profile?.name || '';
+        const from = message.from;
+        const text = message.text.body;
+        const phoneNumberId = value.metadata.phone_number_id;
+        const customerName = value?.contacts?.[0]?.profile?.name || '';
+        const messageId = message.id;
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    const whatsappToken = process.env.WHATSAPP_TOKEN;
-    const claudeMessages = await buildClaudeMessages(from, text);
+        // מטא לפעמים שולחת את אותו webhook פעמיים (retry) אם התגובה שלנו לוקחת יותר מדי זמן.
+        // אם כבר טיפלנו בהודעה הזו (לפי מזהה ההודעה), לא שולחים תשובה כפולה.
+        if (messageId && processedMessageIds.has(messageId)) {
+                return res.status(200).json({ ok: true, duplicate: true });
+        }
+        if (messageId) {
+                processedMessageIds.add(messageId);
+                if (processedMessageIds.size > 200) {
+                          const ids = [...processedMessageIds].slice(-100);
+                          processedMessageIds.clear();
+                          for (const id of ids) processedMessageIds.add(id);
+                }
+        }
 
-    const customerMessageCount = claudeMessages.filter(
-      (item) => item.role === 'user'
-    ).length;
+        const apiKey = process.env.ANTHROPIC_API_KEY;
+        const whatsappToken = process.env.WHATSAPP_TOKEN;
 
-    let replyText;
+        let replyText;
 
-    // הודעת ברירת המחדל שמגיעה ממודעת פייסבוק אינה שאלה שנוסחה בידי הלקוח.
-    // מזהים אותה גם עם "שלום" או "היי" בתחילתה, ובכל שלב בשיחה.
-    if (isGenericAdOpening(text)) {
-      replyText = NEW_LEAD_OPENING_REPLY;
-    } else if (isThankYouMessage(text)) {
-      replyText = 'בשמחה! 😊';
-    } else {
-      const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+        // הודעת ברירת המחדל שמגיעה ממודעת פייסבוק אינה שאלה שנוסחה בידי הלקוח.
+        // מזהים אותה גם עם "שלום" או "היי" בתחילתה, ובכל שלב בשיחה.
+        if (isGenericAdOpening(text)) {
+                replyText = NEW_LEAD_OPENING_REPLY;
+        } else if (isThankYouMessage(text)) {
+                replyText = 'בשמחה! 😊';
+        } else {
+                const claudeMessages = await buildClaudeMessages(from, text);
+                const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
