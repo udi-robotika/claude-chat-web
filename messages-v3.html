@@ -88,14 +88,14 @@
       for(const row of [...rows].sort((a,b)=>parseTime(a.time)-parseTime(b.time))){
         const phone=String(row.phone||'').replace(/\D/g,'');if(!phone)continue;
         if(!grouped.has(phone))grouped.set(phone,{phone,name:'',mode:'bot',events:[],firstTime:row.time||'',latestTime:row.time||''});
-        const c=grouped.get(phone);if(row.name)c.name=row.name;c.latestTime=row.time||c.latestTime;
+        const c=grouped.get(phone);if(row.name)c.name=row.name;c.latestTime=row.time||c.latestTime;if(row.customerId)c.customerId=row.customerId;
         const reply=String(row.botReply||'').trim();
         if(reply.startsWith(BOT_MODE_MARKER)){c.mode='bot';continue}
         if(reply.startsWith(MANUAL_MODE_MARKER)){c.mode='manual';continue}
         if(String(row.customerMessage||'').trim())c.events.push({direction:'in',source:'הלקוח',text:String(row.customerMessage).trim(),time:row.time||''});
         if(reply){const manual=reply.startsWith(MANUAL_REPLY_PREFIX);if(manual)c.mode='manual';c.events.push({direction:'out',source:manual?'נשלח ידנית':'יחזקאל',text:manual?stripManualPrefix(reply):reply,time:row.time||''})}
       }
-      const items=[...grouped.values()].map(c=>{const e=c.events[c.events.length-1];return{...c,lastText:e?.text||'',latestTime:e?.time||c.latestTime}});const chronological=[...items].sort((a,b)=>parseTime(a.firstTime)-parseTime(b.firstTime)||a.phone.localeCompare(b.phone));chronological.forEach((c,index)=>c.customerNumber=index+1);return items.sort((a,b)=>parseTime(b.latestTime)-parseTime(a.latestTime));
+      const items=[...grouped.values()].map(c=>{const e=c.events[c.events.length-1];return{...c,lastText:e?.text||'',latestTime:e?.time||c.latestTime}});const chronological=[...items].sort((a,b)=>parseTime(a.firstTime)-parseTime(b.firstTime)||a.phone.localeCompare(b.phone));chronological.forEach((c,index)=>{c.customerNumber=c.customerId||(index+1);});return items.sort((a,b)=>parseTime(b.latestTime)-parseTime(a.latestTime));
     }
 
     function showGlobalStatus(text,duration=1400){globalStatus.textContent=text;globalStatus.hidden=false;clearTimeout(showGlobalStatus.timer);showGlobalStatus.timer=setTimeout(()=>globalStatus.hidden=true,duration)}
