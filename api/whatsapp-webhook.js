@@ -53,7 +53,7 @@ async function saveConversationToSheets(conversation) {
   }
 }
 
-async function loadConversationsFromSheets() {
+export async function loadConversationsFromSheets() {
   const secret = process.env.GOOGLE_SHEETS_SECRET;
   if (!secret) {
     throw new Error('GOOGLE_SHEETS_SECRET is not configured');
@@ -74,7 +74,7 @@ const response = await fetch(SHEETS_WEB_APP_URL, {
   }
 
   return (data.rows || []).map((row) => ({
-    id: row.messageId,
+    id: row.messageId, customerId: row.customerId,
     time: row.timestamp,
     name: row.name,
     phone: row.phone,
