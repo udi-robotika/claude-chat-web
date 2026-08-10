@@ -156,7 +156,7 @@ function rememberConversation(conversation) {
   }
 }
 
-const NEW_LEAD_OPENING_REPLY = "היי! שמחים שהגעתם למרכז לרובוטיקה וארדואינו בתל אביב 😊\n\nלפרטים על קורס רובוטיקה וארדואינו:\nhttps://www.robotika.co.il/קורס-רובוטיקה-ארדואינו";
+const NEW_LEAD_OPENING_REPLY = "היי! אנו שמחים שהגעתם למרכז לרובוטיקה וארדואינו, בדיזנגוף סנטר, תל אביב 😊\n\nלפרטים על קורס רובוטיקה וארדואינו:\nhttps://www.robotika.co.il/קורס-רובוטיקה-ארדואינו\n\nמהיכן אתם בארץ, ובמה אתם מתעניינים?";
 
 function isGenericAdOpening(text) {
   const normalized = String(text || '')
