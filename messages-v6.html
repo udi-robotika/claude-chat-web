@@ -88,7 +88,7 @@
       const grouped=new Map();
       for(const row of [...rows].sort((a,b)=>parseTime(a.time)-parseTime(b.time))){
         const phone=String(row.phone||'').replace(/\D/g,'');if(!phone)continue;
-        if(!grouped.has(phone))grouped.set(phone,a{phone,name:'',mode:'bot',events:[],firstTime:row.time||'',latestTime:row.time||''});
+        if(!grouped.has(phone))grouped.set(phone,{phone,name:'',mode:'bot',events:[],firstTime:row.time||'',latestTime:row.time||''});
         const c=grouped.get(phone);if(row.name)c.name=row.name;c.latestTime=row.time||c.latestTime;if(row.customerId)c.customerId=row.customerId;
         const reply=String(row.botReply||'').trim();
         if(reply.startsWith(BOT_MODE_MARKER)){c.mode='bot';continue}
