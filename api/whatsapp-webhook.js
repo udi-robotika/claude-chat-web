@@ -5,6 +5,7 @@ const SHEETS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyeCAcrIHAjl
 const recentConversations = [];
 const processedMessageIds = new Set();
 const CLAUDE_HISTORY_LIMIT = 12;
+const OWNER_PHONE = '972547402005';
 
 function normalizePhone(value) {
   return String(value || '').replace(/\D/g, '');
@@ -311,6 +312,167 @@ const SYSTEM_PROMPT = `כלל שפה מחייב ובעל עדיפות עליונ
 כשמציגים מחיר קורס, יש לציין רק את המחיר עצמו - לא לפרט אפשרויות תשלום או מבצעים ביוזמתך, ולא לדחוף קישורי תשלום או לזרז לתשלום מיידי. יש לתת ללקוחות זמן לחשוב, ולהזכיר תשלום/קישור רק בעדינות אם הלקוח מביע רצון ברור להירשם או שואל על כך.
 אם שואלים משהו שלא מופיע כאן (למשל מקומות פנויים), תגיד שתבדוק ותחזור אליהם, ותן את הטלפון/וואטסאפ ליצירת קשר ישיר: 054-5639120.`;
 
+
+async function askClaude(systemPrompt, userMessage) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-5',
+      max_tokens: 1024,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }],
+    }),
+  });
+  const data = await claudeRes.json();
+  if (!claudeRes.ok) {
+    console.error('Claude API error (lead digest):', claudeRes.status, JSON.stringify(data));
+    throw new Error('Claude API error');
+  }
+  return (data.content || []).map((c) => c.text || '').join('');
+}
+
+function parseRequestedDays(text) {
+  const match = String(text || '').match(/(\d+)\s*ימים/);
+  if (match) {
+    const n = parseInt(match[1], 10);
+    if (n > 0 && n <= 60) return n;
+  }
+  return 3;
+}
+
+const LEAD_DIGEST_MARKER_PREFIX = 'admin-checked-';
+const LEAD_DIGEST_MARKER_TEXT_PREFIX = '🔔 יחזקאל בדק לידים עד ';
+
+async function markLeadAsChecked(phone) {
+  const now = new Date().toISOString();
+  try {
+    await saveConversationToSheets({
+      id: LEAD_DIGEST_MARKER_PREFIX + phone + '-' + Date.now(),
+      time: now,
+      name: '',
+      phone,
+      customerMessage: '',
+      botReply: LEAD_DIGEST_MARKER_TEXT_PREFIX + now,
+    });
+  } catch (error) {
+    console.error('Lead digest: failed to mark lead as checked', phone, error);
+  }
+}
+
+async function handleOwnerLeadDigest(text) {
+  const days = parseRequestedDays(text);
+  const sinceTime = Date.now() - days * 24 * 60 * 60 * 1000;
+
+  let conversations;
+  try {
+    conversations = await loadConversationsFromSheets();
+  } catch (error) {
+    console.error('Lead digest: Sheets read error', error);
+    return 'לא הצלחתי לקרוא את היסטוריית השיחות כרגע. נסה שוב בעוד רגע.';
+  }
+
+  const byPhone = new Map();
+  for (const row of conversations) {
+    const phone = normalizePhone(row.phone);
+    if (!phone || phone === OWNER_PHONE) continue;
+    if (!byPhone.has(phone)) byPhone.set(phone, { phone, name: '', events: [], lastCheckedAt: 0, latestActivity: 0 });
+    const entry = byPhone.get(phone);
+    if (row.name) entry.name = row.name;
+
+    const reply = String(row.botReply || '').trim();
+    const rowId = String(row.id || '');
+    const rowTime = Date.parse(row.time || '') || 0;
+
+    if (rowId.indexOf(LEAD_DIGEST_MARKER_PREFIX) === 0 || reply.indexOf(LEAD_DIGEST_MARKER_TEXT_PREFIX) === 0) {
+      entry.lastCheckedAt = Math.max(entry.lastCheckedAt, rowTime);
+      continue;
+    }
+    if (isModeMarker(reply)) continue;
+
+    entry.latestActivity = Math.max(entry.latestActivity, rowTime);
+    if (rowTime >= sinceTime) {
+      if (String(row.customerMessage || '').trim()) {
+        entry.events.push({ role: 'customer', text: row.customerMessage, time: rowTime });
+      }
+      if (reply) {
+        entry.events.push({ role: 'bot', text: cleanAssistantMessage(reply), time: rowTime });
+      }
+    }
+  }
+
+  const candidates = [...byPhone.values()].filter(function (entry) {
+    return entry.events.length && entry.latestActivity > entry.lastCheckedAt;
+  });
+
+  if (!candidates.length) {
+    return 'לא נמצאו לידים חדשים ב-' + days + ' הימים האחרונים.';
+  }
+
+  const transcript = candidates
+    .map(function (entry, index) {
+      const lines = entry.events
+        .sort(function (a, b) { return a.time - b.time; })
+        .map(function (event) { return (event.role === 'customer' ? 'לקוח' : 'בוט') + ': ' + event.text; })
+        .join('\n');
+      return '## ליד ' + (index + 1) + ' — שם: ' + (entry.name || 'לא ידוע') + ' — טלפון: ' + entry.phone + '\n' + lines;
+    })
+    .join('\n\n');
+
+  const classifyPrompt = 'להלן שיחות וואטסאפ אחרונות של המרכז לרובוטיקה וארדואינו. סמן אילו מהן "לידים חשובים" לפי הקריטריונים הבאים:\n' +
+    'חשוב: בקשת יצירת קשר/חזרה טלפונית, כוונת הרשמה/תשלום, שאלות מחיר/לו"ז ספציפיות, שיחה עם כמה חילופי הודעות, בקשות התאמה מיוחדת, התלהבות ברורה.\n' +
+    'לא חשוב: "תודה" בלבד, או שאלה חד-פעמית שכבר נענתה במלואה.\n\n' +
+    'עבור כל ליד חשוב בלבד, כתוב שורה בפורמט הבא (בלי תוספות אחרות):\n' +
+    'שם | טלפון | סיבה קצרה במשפט אחד\n\n' +
+    'אם אין לידים חשובים, כתוב בדיוק: אין לידים חשובים.\n\n' +
+    'השיחות:\n' + transcript;
+
+  let classification;
+  try {
+    classification = await askClaude('אתה עוזר שממיין לידים עסקיים לפי חשיבות. ענה בעברית, תמציתי, בפורמט המבוקש בדיוק.', classifyPrompt);
+  } catch (error) {
+    return 'לא הצלחתי לסווג את הלידים כרגע (שגיאת AI). נסה שוב בעוד רגע.';
+  }
+
+  const trimmed = String(classification || '').trim();
+  const reportedPhones = [];
+  let replyLines = [];
+
+  if (!trimmed || trimmed.indexOf('אין לידים חשובים') !== -1) {
+    replyLines.push('לא נמצאו לידים חשובים ב-' + days + ' הימים האחרונים.');
+  } else {
+    replyLines.push('לידים חשובים ב-' + days + ' הימים האחרונים:\n');
+    const rawLines = trimmed.split('\n');
+    for (let i = 0; i < rawLines.length; i++) {
+      const line = rawLines[i].trim();
+      if (!line) continue;
+      const parts = line.split('|').map(function (p) { return p.trim(); });
+      if (parts.length < 2) continue;
+      const name = parts[0];
+      const phoneRaw = parts[1];
+      const reasonParts = parts.slice(2);
+      const phone = normalizePhone(phoneRaw);
+      if (!phone || !byPhone.has(phone)) continue;
+      replyLines.push('• ' + (name || 'לא ידוע') + ' - ' + phone + (reasonParts.length ? ' — ' + reasonParts.join(' | ') : ''));
+      reportedPhones.push(phone);
+    }
+    if (!reportedPhones.length) {
+      replyLines = ['לא נמצאו לידים חשובים ב-' + days + ' הימים האחרונים.'];
+    }
+  }
+
+  for (const entry of candidates) {
+    await markLeadAsChecked(entry.phone);
+  }
+
+  return replyLines.join('\n');
+}
+
 export default async function handler(req, res) {
   // אימות ה-webhook מול מטא (קריאת GET חד-פעמית בזמן ההגדרה)
   if (req.method === 'GET') {
@@ -386,7 +548,9 @@ export default async function handler(req, res) {
 
         // הודעת ברירת המחדל שמגיעה ממודעת פייסבוק אינה שאלה שנוסחה בידי הלקוח.
         // מזהים אותה גם עם "שלום" או "היי" בתחילתה, ובכל שלב בשיחה.
-        if (isGenericAdOpening(text)) {
+        if (normalizePhone(from) === OWNER_PHONE) {
+                replyText = await handleOwnerLeadDigest(text);
+        } else if (isGenericAdOpening(text)) {
                 replyText = NEW_LEAD_OPENING_REPLY;
         } else if (isThankYouMessage(text)) {
                 replyText = 'בשמחה! 😊';
@@ -431,6 +595,10 @@ const metaRes = await fetch(`https://graph.facebook.com/v25.0/${phoneNumberId}/m
 
     const metaResponseText = await metaRes.text();
     console.log("META RESPONSE:", metaRes.status, metaResponseText);
+
+    if (normalizePhone(from) === OWNER_PHONE) {
+      return res.status(200).json({ ok: true, ownerDigest: true });
+    }
 
     const conversation = {
       id: message.id || `${from}-${Date.now()}`,
