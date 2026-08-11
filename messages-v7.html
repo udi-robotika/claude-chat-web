@@ -91,6 +91,8 @@
         if(!grouped.has(phone))grouped.set(phone,{phone,name:'',mode:'bot',events:[],firstTime:row.time||'',latestTime:row.time||''});
         const c=grouped.get(phone);if(row.name)c.name=row.name;c.latestTime=row.time||c.latestTime;if(row.customerId)c.customerId=row.customerId;
         const reply=String(row.botReply||'').trim();
+        const rowId=String(row.id||'');
+        if(rowId.startsWith('admin-checked-')||reply.includes('בדק לידים')){continue}
         if(reply.startsWith(BOT_MODE_MARKER)){c.mode='bot';continue}
         if(reply.startsWith(MANUAL_MODE_MARKER)){c.mode='manual';continue}
         if(String(row.customerMessage||'').trim())c.events.push({direction:'in',source:'🟢 הלקוח',text:compactDisplayText(row.customerMessage),time:row.time||''});
