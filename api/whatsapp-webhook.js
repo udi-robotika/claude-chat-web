@@ -163,10 +163,13 @@ function rememberConversation(conversation) {
 async function sendTelegramAlert(name, phone, text) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
-  if (!token || !chatId) return;
+  if (!token || !chatId) {
+    console.error('TELEGRAM DEBUG: missing env vars', { hasToken: !!token, hasChatId: !!chatId });
+    return;
+  }
 
   try {
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const tgRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -174,6 +177,8 @@ async function sendTelegramAlert(name, phone, text) {
         text: `📩 הודעה חדשה בוואטסאפ\n\n👤 ${name || 'לא ידוע'}\n📞 ${phone}\n💬 ${text}`,
       }),
     });
+    const tgText = await tgRes.text();
+    console.log('TELEGRAM DEBUG:', tgRes.status, tgText);
   } catch (error) {
     // כשל בטלגרם לא אמור לעצור את הבוט מלענות ללקוח.
     console.error('Telegram alert failed:', error);
@@ -569,7 +574,7 @@ export default async function handler(req, res) {
         // התראת טלגרם על כל הודעה נכנסת - חוץ מהודעות שהאונר עצמו שולח
         // (אלה מיועדות להפעיל את סיכום הלידים, לא הודעות לקוח חדשות).
         if (normalizePhone(from) !== OWNER_PHONE) {
-          sendTelegramAlert(customerName, from, text);
+          await sendTelegramAlert(customerName, from, text);
         }
 
         let replyText;
