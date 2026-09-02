@@ -158,6 +158,28 @@ function rememberConversation(conversation) {
   }
 }
 
+// שולח התראת טלגרם לאונר על כל הודעה נכנסת חדשה מלקוח.
+// עצמאי לגמרי מלוגיקת סיכום הלידים (handleOwnerLeadDigest) - לא נוגע בה.
+async function sendTelegramAlert(name, phone, text) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) return;
+
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: `📩 הודעה חדשה בוואטסאפ\n\n👤 ${name || 'לא ידוע'}\n📞 ${phone}\n💬 ${text}`,
+      }),
+    });
+  } catch (error) {
+    // כשל בטלגרם לא אמור לעצור את הבוט מלענות ללקוח.
+    console.error('Telegram alert failed:', error);
+  }
+}
+
 const NEW_LEAD_OPENING_REPLY = "היי! אנו שמחים שהגעתם למרכז לרובוטיקה וארדואינו, בדיזנגוף סנטר, תל אביב 😊\n\nלפרטים על קורס רובוטיקה וארדואינו:\nhttps://www.robotika.co.il/קורס-רובוטיקה-ארדואינו\n\nמהיכן אתם בארץ, ובמה אתם מתעניינים?";
 
 function isGenericAdOpening(text) {
@@ -543,6 +565,12 @@ export default async function handler(req, res) {
 
         const apiKey = process.env.ANTHROPIC_API_KEY;
         const whatsappToken = process.env.WHATSAPP_TOKEN;
+
+        // התראת טלגרם על כל הודעה נכנסת - חוץ מהודעות שהאונר עצמו שולח
+        // (אלה מיועדות להפעיל את סיכום הלידים, לא הודעות לקוח חדשות).
+        if (normalizePhone(from) !== OWNER_PHONE) {
+          sendTelegramAlert(customerName, from, text);
+        }
 
         let replyText;
 
