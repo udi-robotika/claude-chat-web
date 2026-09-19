@@ -26,33 +26,51 @@ function compactTextForSheets(text) {
     .trim();
 }
 
+// קריאות ל-Apps Script נכשלות לפעמים באופן זמני (404 / Unauthorized תחת עומס).
+// מנסים שוב כמה פעמים לפני שמוותרים.
+async function callSheetsWithRetry(payload, attempts = 3) {
+  let lastError;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const response = await fetch(SHEETS_WEB_APP_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) throw new Error(`Google Sheets returned HTTP ${response.status}`);
+      const data = await response.json();
+      if (!data.ok) throw new Error(data.error || 'Google Sheets rejected the request');
+      return data;
+    } catch (error) {
+      lastError = error;
+      if (i < attempts - 1) {
+        console.warn(`SHEETS RETRY ${i + 1}/${attempts - 1} (${payload.action || 'save'}):`, error.message);
+        await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+      }
+    }
+  }
+  throw lastError;
+}
+
+// מטמון קצר לרשימת השיחות, כדי שכמה מסכי צפייה פתוחים לא יפציצו את Apps Script.
+const SHEETS_LIST_CACHE_MS = 10000;
+let sheetsListCache = { time: 0, rows: null, pending: null };
+
 async function saveConversationToSheets(conversation) {
   const secret = process.env.GOOGLE_SHEETS_SECRET;
   if (!secret) {
     throw new Error('GOOGLE_SHEETS_SECRET is not configured');
   }
 
-  const response = await fetch(SHEETS_WEB_APP_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      secret,
-      messageId: conversation.id,
-      name: conversation.name,
-      phone: conversation.phone,
-      customerMessage: compactTextForSheets(conversation.customerMessage),
-      botReply: compactTextForSheets(conversation.botReply),
-    }),
+  await callSheetsWithRetry({
+    secret,
+    messageId: conversation.id,
+    name: conversation.name,
+    phone: conversation.phone,
+    customerMessage: compactTextForSheets(conversation.customerMessage),
+    botReply: compactTextForSheets(conversation.botReply),
   });
-
-  if (!response.ok) {
-    throw new Error(`Google Sheets returned HTTP ${response.status}`);
-  }
-
-  const data = await response.json();
-  if (!data.ok) {
-    throw new Error(data.error || 'Google Sheets rejected the conversation');
-  }
+  sheetsListCache.time = 0; // שורה חדשה נכתבה - לרענן בקריאה הבאה
 }
 
 export async function loadConversationsFromSheets() {
@@ -61,28 +79,31 @@ export async function loadConversationsFromSheets() {
     throw new Error('GOOGLE_SHEETS_SECRET is not configured');
   }
 
-const response = await fetch(SHEETS_WEB_APP_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ secret, action: 'list' }),
-});
-  if (!response.ok) {
-    throw new Error(`Google Sheets returned HTTP ${response.status}`);
+  const now = Date.now();
+  if (sheetsListCache.rows && now - sheetsListCache.time < SHEETS_LIST_CACHE_MS) {
+    return sheetsListCache.rows;
   }
+  if (sheetsListCache.pending) return sheetsListCache.pending;
 
-  const data = await response.json();
-  if (!data.ok) {
-    throw new Error(data.error || 'Google Sheets rejected the request');
-  }
-
-  return (data.rows || []).map((row) => ({
-    id: row.messageId, customerId: row.customerId,
-    time: row.timestamp,
-    name: row.name,
-    phone: row.phone,
-    customerMessage: row.customerMessage,
-    botReply: row.botReply,
-  }));
+  sheetsListCache.pending = (async () => {
+    try {
+      const data = await callSheetsWithRetry({ secret, action: 'list' });
+      const rows = (data.rows || []).map((row) => ({
+        id: row.messageId, customerId: row.customerId,
+        time: row.timestamp,
+        name: row.name,
+        phone: row.phone,
+        customerMessage: row.customerMessage,
+        botReply: row.botReply,
+      }));
+      sheetsListCache.rows = rows;
+      sheetsListCache.time = Date.now();
+      return rows;
+    } finally {
+      sheetsListCache.pending = null;
+    }
+  })();
+  return sheetsListCache.pending;
 }
 
 async function buildClaudeMessages(phone, currentMessage) {
