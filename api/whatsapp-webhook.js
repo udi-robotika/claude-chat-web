@@ -361,6 +361,22 @@ const SYSTEM_PROMPT = `כלל שפה מחייב ובעל עדיפות עליונ
 אם שואלים משהו שלא מופיע כאן (למשל מקומות פנויים), תגיד שתבדוק ותחזור אליהם, ותן את הטלפון/וואטסאפ ליצירת קשר ישיר: 054-5639120.`;
 
 
+// התאריך והשעה בישראל - כדי שיחזקאל יידע מה היום ויענה נכון על "מחר", "יום שלישי הקרוב" וכו'.
+function israelNowLine() {
+  const now = new Date();
+  const date = new Intl.DateTimeFormat('he-IL', { timeZone: 'Asia/Jerusalem', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(now);
+  const time = new Intl.DateTimeFormat('he-IL', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit', hour12: false }).format(now);
+  return `התאריך והשעה עכשיו בישראל: ${date}, ${time}. השתמש בזה כשהלקוח שואל על היום, מחר, או ימים ותאריכים קרובים.`;
+}
+
+// הפרומפט הקבוע נשמר ב-cache (זול יותר), והתאריך נוסף אחריו כבלוק נפרד שמשתנה.
+function buildSystemBlocks() {
+  return [
+    { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+    { type: 'text', text: israelNowLine() },
+  ];
+}
+
 async function askClaude(systemPrompt, userMessage) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -620,7 +636,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           model: 'claude-sonnet-5',
           max_tokens: 1024,
-          system: SYSTEM_PROMPT,
+          system: buildSystemBlocks(),
           messages: claudeMessages,
         }),
       });
