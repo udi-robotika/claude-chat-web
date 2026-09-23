@@ -206,7 +206,7 @@ async function sendTelegramAlert(name, phone, text) {
   }
 }
 
-const NEW_LEAD_OPENING_REPLY = "היי! אנו שמחים שהגעתם למרכז לרובוטיקה וארדואינו, בדיזנגוף סנטר, תל אביב 😊\n\nלפרטים על קורס רובוטיקה וארדואינו:\nhttps://www.robotika.co.il/קורס-רובוטיקה-ארדואינו\n\nמהיכן אתם בארץ, ובמה אתם מתעניינים?";
+const NEW_LEAD_OPENING_REPLY = "היי! אנו שמחים שהגעתם למרכז לרובוטיקה וארדואינו, בדיזנגוף סנטר, תל אביב 😊\n\nלפרטים על קורס רובוטיקה וארדואינו:\nhttps://www.robotika.co.il/קורס-רובוטיקה-ארדואינו\n\nמהיכן אתם בארץ?";
 
 function isGenericAdOpening(text) {
   const normalized = String(text || '')
